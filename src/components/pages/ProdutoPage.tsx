@@ -28,6 +28,13 @@ interface ProductVariant {
   };
   optionChoices?: Array<{
     choiceId?: string;
+    optionChoiceNames?: Array<{
+      optionName?: string;
+      choiceName?: string;
+    }>;
+    optionChoiceIds?: {
+      choiceId?: string;
+    };
   }>;
   media?: {
     image?: string;
@@ -45,6 +52,11 @@ interface OptionChoice {
   linkedMedia?: {
     image?: string;
   };
+}
+
+interface OptionChoiceName {
+  optionName?: string;
+  choiceName?: string;
 }
 
 interface ProductOption {
@@ -99,8 +111,15 @@ export default function ProdutoPage() {
         setIsLoading(true);
         if (!id) return;
 
-        // Fetch product
-        const productData = await BaseCrudService.getById<Product>('StoreCatalog/Products', id);
+        // Fetch product with all references (same as debug page)
+        const productData = await BaseCrudService.getById<Product>(
+          'StoreCatalog/Products',
+          id,
+          {
+            singleRef: [],
+            multiRef: []
+          }
+        );
 
         if (productData) {
           setProduct(productData);
@@ -138,6 +157,34 @@ export default function ProdutoPage() {
 
     loadProduct();
   }, [id]);
+
+  // Build options from variants if product.options is empty
+  const buildOptionsFromVariants = () => {
+    if (!variants || variants.length === 0) return {};
+
+    const optionsMap: Record<string, Set<string>> = {};
+
+    variants.forEach(variant => {
+      if (variant.optionChoices && Array.isArray(variant.optionChoices)) {
+        variant.optionChoices.forEach(choice => {
+          if (choice.optionChoiceNames && Array.isArray(choice.optionChoiceNames)) {
+            choice.optionChoiceNames.forEach((ocn: OptionChoiceName) => {
+              if (ocn.optionName && ocn.choiceName) {
+                if (!optionsMap[ocn.optionName]) {
+                  optionsMap[ocn.optionName] = new Set();
+                }
+                optionsMap[ocn.optionName].add(ocn.choiceName);
+              }
+            });
+          }
+        });
+      }
+    });
+
+    return optionsMap;
+  };
+
+  const variantOptions = buildOptionsFromVariants();
 
   // Update price when options change
   useEffect(() => {
@@ -289,6 +336,42 @@ export default function ProdutoPage() {
     return images;
   };
 
+  // Get options to display - prefer product.options, fallback to variant options
+  const getColorOptions = (): OptionChoice[] => {
+    const colorOption = product?.options?.find(opt => opt.optionName === 'Cor');
+    if (colorOption?.choicesSettings?.choices) {
+      return colorOption.choicesSettings.choices;
+    }
+
+    // Fallback: build from variants
+    if (variantOptions['Cor'] && variantOptions['Cor'].size > 0) {
+      return Array.from(variantOptions['Cor']).map(colorName => ({
+        choiceId: colorName,
+        description: colorName,
+        colorCode: undefined
+      }));
+    }
+
+    return [];
+  };
+
+  const getStorageOptions = (): OptionChoice[] => {
+    const storageOption = product?.options?.find(opt => opt.optionName === 'Armazenamento');
+    if (storageOption?.choicesSettings?.choices) {
+      return storageOption.choicesSettings.choices;
+    }
+
+    // Fallback: build from variants
+    if (variantOptions['Armazenamento'] && variantOptions['Armazenamento'].size > 0) {
+      return Array.from(variantOptions['Armazenamento']).map(storageName => ({
+        choiceId: storageName,
+        description: storageName
+      }));
+    }
+
+    return [];
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
@@ -317,8 +400,8 @@ export default function ProdutoPage() {
   }
 
   const productImages = getProductImages();
-  const colorOption = product.options?.find(opt => opt.optionName === 'Cor');
-  const storageOption = product.options?.find(opt => opt.optionName === 'Armazenamento');
+  const colorOptions = getColorOptions();
+  const storageOptions = getStorageOptions();
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -399,13 +482,13 @@ export default function ProdutoPage() {
             </div>
 
             {/* Color Selector */}
-            {colorOption?.choicesSettings?.choices && colorOption.choicesSettings.choices.length > 0 ? (
+            {colorOptions.length > 0 ? (
               <div className="mb-8">
                 <label className="block text-sm font-paragraph font-semibold text-foreground mb-4">
                   Cor
                 </label>
                 <div className="flex flex-wrap gap-3">
-                  {colorOption.choicesSettings.choices.map(choice => (
+                  {colorOptions.map(choice => (
                     <button
                       key={choice.choiceId}
                       onClick={() => handleColorChange(choice)}
@@ -433,13 +516,13 @@ export default function ProdutoPage() {
             )}
 
             {/* Storage Selector */}
-            {storageOption?.choicesSettings?.choices && storageOption.choicesSettings.choices.length > 0 && (
+            {storageOptions.length > 0 && (
               <div className="mb-8">
                 <label className="block text-sm font-paragraph font-semibold text-foreground mb-4">
                   Armazenamento
                 </label>
                 <div className="flex flex-wrap gap-3">
-                  {storageOption.choicesSettings.choices.map(choice => (
+                  {storageOptions.map(choice => (
                     <button
                       key={choice.choiceId}
                       onClick={() =>
