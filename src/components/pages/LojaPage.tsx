@@ -23,6 +23,7 @@ interface Product {
   media?: any;
   productType?: string;
   categories?: string[];
+  mainCategoryId?: string;
   variants?: Array<{
     _id: string;
     price?: number;
@@ -71,8 +72,8 @@ export default function LojaPage() {
   useEffect(() => {
     if (selectedCategory) {
       const filtered = products.filter(product => {
-        // Filter by category - check if product belongs to selected category
-        return product.categories?.includes(selectedCategory);
+        // Filter by mainCategoryId matching the selected category ID
+        return product.mainCategoryId === selectedCategory;
       });
       setFilteredProducts(filtered);
     } else {
@@ -130,19 +131,14 @@ export default function LojaPage() {
           </button>
           {categories
             .filter(category => {
-              // Only show categories that have products
-              const hasProducts = products.some(p => p.categories?.includes(category._id));
-              // Hide "Destaques" and "Seminovos" categories
-              return hasProducts && category.name !== 'Destaques' && category.name !== 'Seminovos';
+              // Only show iPhone 17 and iPhone 16 categories
+              return category.name === 'iPhone 17' || category.name === 'iPhone 16';
             })
             .sort((a, b) => {
-              // Custom sort order: iPhone 17, iPhone 16, Novos
-              const order: { [key: string]: number } = {
-                'iPhone 17': 1,
-                'iPhone 16': 2,
-                'Novos': 3,
-              };
-              return (order[a.name] || 999) - (order[b.name] || 999);
+              // Sort: iPhone 17 first, then iPhone 16
+              if (a.name === 'iPhone 17') return -1;
+              if (b.name === 'iPhone 17') return 1;
+              return 0;
             })
             .map(category => (
               <button

@@ -18,6 +18,20 @@ interface ProductVariant {
       amount?: string | number;
     };
   };
+  price?: {
+    actualPrice?: {
+      amount?: string | number;
+    };
+  };
+  productData?: {
+    productId?: string;
+  };
+  optionChoices?: Array<{
+    choiceId?: string;
+  }>;
+  media?: {
+    image?: string;
+  };
   options?: Array<{
     optionName?: string;
     selection?: string;
@@ -78,7 +92,6 @@ export default function ProdutoPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [mainImage, setMainImage] = useState<string>('');
-  const [currentPrice, setCurrentPrice] = useState<number>(0);
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -97,10 +110,6 @@ export default function ProdutoPage() {
           const convertedMainImage = convertWixImageUrl(mainImageUrl);
           setMainImage(convertedMainImage || '');
 
-          // Set initial price from actualPriceRange
-          const minPrice = getMinProductPrice(productData);
-          setCurrentPrice(minPrice);
-
           // Fetch variants using the product ID
           try {
             const variantsResult = await BaseCrudService.getAll<ProductVariant>(
@@ -109,10 +118,12 @@ export default function ProdutoPage() {
               { limit: 100 }
             );
 
-            // Filter variants that belong to this product
-            // Note: This is a simplified approach - in real scenario, variants should have a productId field
+            // Filter variants that belong to this product by matching productData.productId
             if (variantsResult.items) {
-              setVariants(variantsResult.items);
+              const filteredVariants = variantsResult.items.filter(
+                variant => variant.productData?.productId === id
+              );
+              setVariants(filteredVariants);
             }
           } catch (err) {
             console.error('Error loading variants:', err);
@@ -130,32 +141,44 @@ export default function ProdutoPage() {
 
   // Update price when options change
   useEffect(() => {
-    if (!product) return;
+    if (!product || variants.length === 0) return;
 
     // Find matching variant based on selected options
     let matchingVariant: ProductVariant | null = null;
 
-    if (variants.length > 0) {
-      matchingVariant = variants.find(variant => {
-        if (!variant.options) return false;
+    // Get the selected color and storage choiceIds
+    const colorOption = product.options?.find(opt => opt.optionName === 'Cor');
+    const storageOption = product.options?.find(opt => opt.optionName === 'Armazenamento');
 
-        return variant.options.every(variantOption => {
-          const optionName = variantOption.optionName;
-          const selection = variantOption.selection;
-          return selectedOptions[optionName || ''] === selection;
-        });
+    const selectedColorName = selectedOptions['Cor'];
+    const selectedStorageName = selectedOptions['Armazenamento'];
+
+    // Get choiceIds for selected options
+    const selectedColorChoiceId = colorOption?.choicesSettings?.choices?.find(
+      c => c.description === selectedColorName
+    )?.choiceId;
+    const selectedStorageChoiceId = storageOption?.choicesSettings?.choices?.find(
+      c => c.description === selectedStorageName
+    )?.choiceId;
+
+    // Find variant with matching optionChoices
+    if (selectedColorChoiceId && selectedStorageChoiceId) {
+      matchingVariant = variants.find(variant => {
+        if (!variant.optionChoices || variant.optionChoices.length < 2) return false;
+        const choiceIds = variant.optionChoices.map(oc => oc.choiceId);
+        return (
+          choiceIds.includes(selectedColorChoiceId) &&
+          choiceIds.includes(selectedStorageChoiceId)
+        );
       }) || null;
     }
 
-    if (matchingVariant?.actualPriceRange?.minValue?.amount) {
-      const priceString = matchingVariant.actualPriceRange.minValue.amount;
-      const amount = typeof priceString === 'string' ? parseInt(priceString, 10) : priceString;
-      if (amount && amount > 0) {
-        setCurrentPrice(amount); // Already in Reais, no division needed
+    // Update main image if variant has media
+    if (matchingVariant?.media?.image) {
+      const convertedImage = convertWixImageUrl(matchingVariant.media.image);
+      if (convertedImage) {
+        setMainImage(convertedImage);
       }
-    } else {
-      // Fallback to product's minimum price
-      setCurrentPrice(getMinProductPrice(product));
     }
   }, [selectedOptions, variants, product]);
 
@@ -182,6 +205,65 @@ export default function ProdutoPage() {
       style: 'currency',
       currency: 'BRL'
     }).format(price);
+  };
+
+  const getSelectedVariantPrice = (): number => {
+    if (!product || variants.length === 0) {
+      return getMinProductPrice(product);
+    }
+
+    const colorOption = product.options?.find(opt => opt.optionName === 'Cor');
+    const storageOption = product.options?.find(opt => opt.optionName === 'Armazenamento');
+
+    const selectedColorName = selectedOptions['Cor'];
+    const selectedStorageName = selectedOptions['Armazenamento'];
+
+    const selectedColorChoiceId = colorOption?.choicesSettings?.choices?.find(
+      c => c.description === selectedColorName
+    )?.choiceId;
+    const selectedStorageChoiceId = storageOption?.choicesSettings?.choices?.find(
+      c => c.description === selectedStorageName
+    )?.choiceId;
+
+    if (selectedColorChoiceId && selectedStorageChoiceId) {
+      const matchingVariant = variants.find(variant => {
+        if (!variant.optionChoices || variant.optionChoices.length < 2) return false;
+        const choiceIds = variant.optionChoices.map(oc => oc.choiceId);
+        return (
+          choiceIds.includes(selectedColorChoiceId) &&
+          choiceIds.includes(selectedStorageChoiceId)
+        );
+      });
+
+      if (matchingVariant?.price?.actualPrice?.amount) {
+        const priceString = matchingVariant.price.actualPrice.amount;
+        const amount = typeof priceString === 'string' ? parseInt(priceString, 10) : priceString;
+        if (amount && amount > 0) {
+          return amount;
+        }
+      }
+    }
+
+    return getMinProductPrice(product);
+  };
+
+  const getMinPrice = (): number => {
+    if (!product || variants.length === 0) {
+      return getMinProductPrice(product);
+    }
+
+    const prices = variants
+      .map(v => {
+        if (v.price?.actualPrice?.amount) {
+          const priceString = v.price.actualPrice.amount;
+          const amount = typeof priceString === 'string' ? parseInt(priceString, 10) : priceString;
+          return amount || 0;
+        }
+        return 0;
+      })
+      .filter(p => p > 0);
+
+    return prices.length > 0 ? Math.min(...prices) : getMinProductPrice(product);
   };
 
   const getProductImages = (): string[] => {
@@ -311,15 +393,13 @@ export default function ProdutoPage() {
               <h1 className="text-4xl md:text-5xl font-heading font-bold text-foreground mb-4">
                 {product.name}
               </h1>
-              {currentPrice > 0 && (
-                <p className="text-3xl font-heading font-bold text-primary">
-                  a partir de {formatPrice(currentPrice)}
-                </p>
-              )}
+              <p className="text-3xl font-heading font-bold text-primary">
+                a partir de {formatPrice(getMinPrice())}
+              </p>
             </div>
 
             {/* Color Selector */}
-            {colorOption?.choicesSettings?.choices && colorOption.choicesSettings.choices.length > 0 && (
+            {colorOption?.choicesSettings?.choices && colorOption.choicesSettings.choices.length > 0 ? (
               <div className="mb-8">
                 <label className="block text-sm font-paragraph font-semibold text-foreground mb-4">
                   Cor
@@ -345,6 +425,10 @@ export default function ProdutoPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+            ) : (
+              <div className="mb-8 p-4 bg-surface border border-line rounded-[6px]">
+                <p className="text-secondary font-paragraph">Opções não carregadas</p>
               </div>
             )}
 
@@ -413,14 +497,30 @@ export default function ProdutoPage() {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
-              <a
-                href={`https://wa.me/[NÚMERO DO WHATSAPP]?text=Olá, tenho interesse no ${product.name}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 inline-flex items-center justify-center bg-primary text-primary-foreground px-8 py-4 rounded-[6px] font-paragraph font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
+              <button
+                onClick={() => {
+                  const selectedColor = selectedOptions['Cor'];
+                  const selectedStorage = selectedOptions['Armazenamento'];
+                  const price = getSelectedVariantPrice();
+
+                  if (!selectedColor || !selectedStorage) {
+                    alert('Por favor, selecione a cor e o armazenamento');
+                    return;
+                  }
+
+                  const message = `Olá! Tenho interesse no ${product.name}, cor ${selectedColor}, ${selectedStorage}, por ${formatPrice(price)}.`;
+                  const encodedMessage = encodeURIComponent(message);
+                  window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+                }}
+                disabled={!selectedOptions['Cor'] || !selectedOptions['Armazenamento']}
+                className={`flex-1 inline-flex items-center justify-center px-8 py-4 rounded-[6px] font-paragraph font-semibold transition-all ${
+                  selectedOptions['Cor'] && selectedOptions['Armazenamento']
+                    ? 'bg-primary text-primary-foreground hover:scale-[1.02] active:scale-[0.98] cursor-pointer'
+                    : 'bg-surface border border-line text-secondary cursor-not-allowed opacity-50'
+                }`}
               >
                 Comprar via WhatsApp
-              </a>
+              </button>
               <Link
                 to="/loja"
                 className="flex-1 inline-flex items-center justify-center bg-surface border border-line text-foreground px-8 py-4 rounded-[6px] font-paragraph font-semibold transition-all hover:border-primary hover:text-primary"
