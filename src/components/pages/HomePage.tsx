@@ -1,4 +1,3 @@
-// HPI 1.7-G
 import React, { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
@@ -8,6 +7,7 @@ import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import { Image } from '@/components/ui/image';
 import { BaseCrudService } from '@/integrations';
+import { convertWixImageUrl, getMinProductPrice } from '@/lib/wix-image-utils';
 
 // --- Types ---
 interface FAQ {
@@ -30,13 +30,19 @@ interface Feature {
 interface Product {
   _id: string;
   name: string;
-  price: number;
+  price?: number;
+  priceData?: { price: number };
   mainImage?: {
     url: string;
   };
+  image?: {
+    url: string;
+  };
+  media?: any;
   variants?: Array<{
     _id: string;
-    price: number;
+    price?: number;
+    priceData?: { price: number };
   }>;
 }
 
@@ -529,14 +535,18 @@ function FeaturedProducts() {
     loadProducts();
   }, []);
 
+  const getProductImage = (product: Product): string | undefined => {
+    // Try various image field names in Wix Stores
+    const imageUrl = product.mainImage?.url || product.image?.url || product.media?.mainMedia?.image?.url;
+    return convertWixImageUrl(imageUrl);
+  };
+
   const getMinPrice = (product: Product): number => {
-    if (product.variants && product.variants.length > 0) {
-      return Math.min(...product.variants.map(v => v.price || product.price));
-    }
-    return product.price || 0;
+    return getMinProductPrice(product);
   };
 
   const formatPrice = (price: number): string => {
+    if (price === 0) return '';
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
@@ -570,9 +580,9 @@ function FeaturedProducts() {
         >
           {/* Product Image */}
           <div className="relative w-full h-48 bg-surface overflow-hidden">
-            {product.mainImage?.url ? (
+            {getProductImage(product) ? (
               <Image
-                src={product.mainImage.url}
+                src={getProductImage(product)!}
                 alt={product.name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
@@ -589,9 +599,11 @@ function FeaturedProducts() {
               {product.name}
             </h3>
             
-            <p className="text-sm text-secondary font-paragraph mb-4">
-              a partir de <span className="text-primary font-semibold">{formatPrice(getMinPrice(product))}</span>
-            </p>
+            {getMinPrice(product) > 0 && (
+              <p className="text-sm text-secondary font-paragraph mb-4">
+                a partir de <span className="text-primary font-semibold">{formatPrice(getMinPrice(product))}</span>
+              </p>
+            )}
 
             <Link
               to={`/produto/${product._id}`}

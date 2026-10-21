@@ -8,11 +8,13 @@ import WhatsAppButton from '@/components/WhatsAppButton';
 import { Image } from '@/components/ui/image';
 import { BaseCrudService } from '@/integrations';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { convertWixImageUrl, getProductImages, getMinProductPrice } from '@/lib/wix-image-utils';
 
 interface ProductVariant {
   _id: string;
   name: string;
-  price: number;
+  price?: number;
+  priceData?: { price: number };
   color?: string;
   storage?: string;
 }
@@ -20,11 +22,16 @@ interface ProductVariant {
 interface Product {
   _id: string;
   name: string;
-  price: number;
+  price?: number;
+  priceData?: { price: number };
   description?: string;
   mainImage?: {
     url: string;
   };
+  image?: {
+    url: string;
+  };
+  media?: any;
   images?: Array<{
     url: string;
   }>;
@@ -54,7 +61,11 @@ export default function ProdutoPage() {
 
         if (data) {
           setProduct(data);
-          setMainImage(data.mainImage?.url || '');
+          
+          // Get main image from various possible fields
+          const mainImageUrl = data.mainImage?.url || data.image?.url || data.media?.mainMedia?.image?.url;
+          const convertedMainImage = convertWixImageUrl(mainImageUrl);
+          setMainImage(convertedMainImage || '');
           
           // Set default variant
           if (data.variants && data.variants.length > 0) {
@@ -72,10 +83,18 @@ export default function ProdutoPage() {
   }, [id]);
 
   const formatPrice = (price: number): string => {
+    if (price === 0) return '';
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     }).format(price);
+  };
+
+  const getVariantPrice = (): number => {
+    if (selectedVariant) {
+      return selectedVariant.price || selectedVariant.priceData?.price || 0;
+    }
+    return product?.price || product?.priceData?.price || 0;
   };
 
   const getUniqueColors = (): string[] => {
@@ -92,13 +111,6 @@ export default function ProdutoPage() {
       .map(v => v.storage)
       .filter((s): s is string => !!s);
     return [...new Set(storage)];
-  };
-
-  const getVariantPrice = (): number => {
-    if (selectedVariant) {
-      return selectedVariant.price;
-    }
-    return product?.price || 0;
   };
 
   if (isLoading) {
@@ -172,23 +184,26 @@ export default function ProdutoPage() {
             {/* Thumbnail Gallery */}
             {product.images && product.images.length > 0 && (
               <div className="grid grid-cols-4 gap-3">
-                {product.images.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setMainImage(img.url)}
-                    className={`aspect-square rounded-[4px] overflow-hidden border-2 transition-all ${
-                      mainImage === img.url
-                        ? 'border-primary'
-                        : 'border-line hover:border-primary/50'
-                    }`}
-                  >
-                    <Image
-                      src={img.url}
-                      alt={`${product.name} ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
+                {product.images.map((img, idx) => {
+                  const convertedUrl = convertWixImageUrl(img.url);
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setMainImage(convertedUrl || '')}
+                      className={`aspect-square rounded-[4px] overflow-hidden border-2 transition-all ${
+                        mainImage === convertedUrl
+                          ? 'border-primary'
+                          : 'border-line hover:border-primary/50'
+                      }`}
+                    >
+                      <Image
+                        src={convertedUrl || ''}
+                        alt={`${product.name} ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  );
+                })}
               </div>
             )}
           </motion.div>
@@ -207,9 +222,11 @@ export default function ProdutoPage() {
               <h1 className="text-4xl md:text-5xl font-heading font-bold text-foreground mb-4">
                 {product.name}
               </h1>
-              <p className="text-3xl font-heading font-bold text-primary">
-                {formatPrice(getVariantPrice())}
-              </p>
+              {getVariantPrice() > 0 && (
+                <p className="text-3xl font-heading font-bold text-primary">
+                  {formatPrice(getVariantPrice())}
+                </p>
+              )}
             </div>
 
             {/* Color Selector */}

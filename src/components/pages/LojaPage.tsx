@@ -7,18 +7,25 @@ import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import { Image } from '@/components/ui/image';
 import { BaseCrudService } from '@/integrations';
+import { convertWixImageUrl, getMinProductPrice } from '@/lib/wix-image-utils';
 
 interface Product {
   _id: string;
   name: string;
-  price: number;
+  price?: number;
+  priceData?: { price: number };
   mainImage?: {
     url: string;
   };
+  image?: {
+    url: string;
+  };
+  media?: any;
   productType?: string;
   variants?: Array<{
     _id: string;
-    price: number;
+    price?: number;
+    priceData?: { price: number };
   }>;
 }
 
@@ -72,14 +79,18 @@ export default function LojaPage() {
     }
   }, [selectedCategory, products]);
 
+  const getProductImage = (product: Product): string | undefined => {
+    // Try various image field names in Wix Stores
+    const imageUrl = product.mainImage?.url || product.image?.url || product.media?.mainMedia?.image?.url;
+    return convertWixImageUrl(imageUrl);
+  };
+
   const getMinPrice = (product: Product): number => {
-    if (product.variants && product.variants.length > 0) {
-      return Math.min(...product.variants.map(v => v.price || product.price));
-    }
-    return product.price || 0;
+    return getMinProductPrice(product);
   };
 
   const formatPrice = (price: number): string => {
+    if (price === 0) return '';
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
@@ -116,19 +127,35 @@ export default function LojaPage() {
           >
             Todos
           </button>
-          {categories.map(category => (
-            <button
-              key={category._id}
-              onClick={() => setSelectedCategory(category._id)}
-              className={`px-6 py-3 rounded-[6px] font-paragraph font-medium transition-all ${
-                selectedCategory === category._id
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-surface border border-line text-foreground hover:border-primary'
-              }`}
-            >
-              {category.name}
-            </button>
-          ))}
+          {categories
+            .filter(category => {
+              // Only show categories that have products
+              const hasProducts = products.some(p => p.productType === category._id || p._id.includes(category._id));
+              // Hide "Destaques" category
+              return hasProducts && category.name !== 'Destaques' && category.name !== 'Seminovos';
+            })
+            .sort((a, b) => {
+              // Custom sort order: iPhone 17, iPhone 16, Novos
+              const order: { [key: string]: number } = {
+                'iPhone 17': 1,
+                'iPhone 16': 2,
+                'Novos': 3,
+              };
+              return (order[a.name] || 999) - (order[b.name] || 999);
+            })
+            .map(category => (
+              <button
+                key={category._id}
+                onClick={() => setSelectedCategory(category._id)}
+                className={`px-6 py-3 rounded-[6px] font-paragraph font-medium transition-all ${
+                  selectedCategory === category._id
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-surface border border-line text-foreground hover:border-primary'
+                }`}
+              >
+                {category.name}
+              </button>
+            ))}
         </div>
 
         {/* Products Grid */}
@@ -154,9 +181,9 @@ export default function LojaPage() {
               >
                 {/* Product Image */}
                 <div className="relative w-full h-64 bg-background overflow-hidden">
-                  {product.mainImage?.url ? (
+                  {getProductImage(product) ? (
                     <Image
-                      src={product.mainImage.url}
+                      src={getProductImage(product)!}
                       alt={product.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
@@ -173,9 +200,11 @@ export default function LojaPage() {
                     {product.name}
                   </h3>
                   
-                  <p className="text-sm text-secondary font-paragraph mb-6">
-                    a partir de <span className="text-primary font-semibold">{formatPrice(getMinPrice(product))}</span>
-                  </p>
+                  {getMinPrice(product) > 0 && (
+                    <p className="text-sm text-secondary font-paragraph mb-6">
+                      a partir de <span className="text-primary font-semibold">{formatPrice(getMinPrice(product))}</span>
+                    </p>
+                  )}
 
                   <Link
                     to={`/produto/${product._id}`}
