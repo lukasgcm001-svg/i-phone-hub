@@ -9,6 +9,9 @@ import { Image } from '@/components/ui/image';
 import { BaseCrudService } from '@/integrations';
 import { convertWixImageUrl, getMinProductPrice, convertAndFormatPrice } from '@/lib/wix-image-utils';
 
+// --- Constants ---
+const FEATURED_CATEGORY_ID = 'a7f817f7-8ac1-43b2-91c3-9072a41ad0fa';
+
 // --- Types ---
 interface FAQ {
   question: string;
@@ -522,9 +525,15 @@ function FeaturedProducts() {
     const loadProducts = async () => {
       try {
         setIsLoading(true);
-        // Fetch products from Wix Stores - limit to 4 for featured section
-        const result = await BaseCrudService.getAll<Product>('StoreCatalog/Products', {}, { limit: 4 });
-        setProducts(result.items || []);
+        // Fetch all products from Wix Stores and filter by featured category
+        const result = await BaseCrudService.getAll<Product>('StoreCatalog/Products', {}, { limit: 100 });
+        
+        // Filter products that belong to the featured category
+        const featuredProducts = (result.items || []).filter(product => 
+          product.categories?.includes(FEATURED_CATEGORY_ID)
+        ).slice(0, 4);
+        
+        setProducts(featuredProducts);
       } catch (error) {
         console.error('Error loading featured products:', error);
       } finally {
