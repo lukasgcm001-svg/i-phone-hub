@@ -151,7 +151,7 @@ export default function ProdutoPage() {
       const priceString = matchingVariant.actualPriceRange.minValue.amount;
       const amount = typeof priceString === 'string' ? parseInt(priceString, 10) : priceString;
       if (amount && amount > 0) {
-        setCurrentPrice(amount / 100);
+        setCurrentPrice(amount); // Already in Reais, no division needed
       }
     } else {
       // Fallback to product's minimum price
@@ -308,9 +308,6 @@ export default function ProdutoPage() {
             className="flex flex-col"
           >
             <div className="mb-8">
-              <p className="text-xs uppercase tracking-wider text-secondary mb-4 font-paragraph">
-                {product.productType || 'Produto'}
-              </p>
               <h1 className="text-4xl md:text-5xl font-heading font-bold text-foreground mb-4">
                 {product.name}
               </h1>
@@ -386,9 +383,10 @@ export default function ProdutoPage() {
                 <h3 className="text-lg font-heading font-semibold text-foreground mb-4">
                   Descrição
                 </h3>
-                <p className="text-secondary font-paragraph leading-relaxed">
-                  {product.plainDescription}
-                </p>
+                <div 
+                  className="text-secondary font-paragraph leading-relaxed prose prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: product.plainDescription.replace(/<[^>]*>/g, '') }}
+                />
               </div>
             )}
 

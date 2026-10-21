@@ -22,6 +22,7 @@ interface Product {
   };
   media?: any;
   productType?: string;
+  categories?: string[];
   variants?: Array<{
     _id: string;
     price?: number;
@@ -70,8 +71,8 @@ export default function LojaPage() {
   useEffect(() => {
     if (selectedCategory) {
       const filtered = products.filter(product => {
-        // Filter by category - you may need to adjust based on actual product structure
-        return product.productType === selectedCategory || product._id.includes(selectedCategory);
+        // Filter by category - check if product belongs to selected category
+        return product.categories?.includes(selectedCategory);
       });
       setFilteredProducts(filtered);
     } else {
@@ -130,8 +131,8 @@ export default function LojaPage() {
           {categories
             .filter(category => {
               // Only show categories that have products
-              const hasProducts = products.some(p => p.productType === category._id || p._id.includes(category._id));
-              // Hide "Destaques" category
+              const hasProducts = products.some(p => p.categories?.includes(category._id));
+              // Hide "Destaques" and "Seminovos" categories
               return hasProducts && category.name !== 'Destaques' && category.name !== 'Seminovos';
             })
             .sort((a, b) => {

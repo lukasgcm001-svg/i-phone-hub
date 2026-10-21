@@ -116,16 +116,17 @@ export function getProductImages(product: any): string[] {
 /**
  * Gets the minimum price from a product or its variants
  * Uses actualPriceRange.minValue.amount field from Wix Stores
+ * NOTE: actualPriceRange.minValue.amount is already in Reais (not cents)
  */
 export function getMinProductPrice(product: any): number {
   if (!product) return 0;
 
-  // Check for actualPriceRange.minValue.amount (Wix Stores format)
+  // Check for actualPriceRange.minValue.amount (Wix Stores format - already in Reais)
   if (product.actualPriceRange?.minValue?.amount) {
     const priceString = product.actualPriceRange.minValue.amount;
     const amount = typeof priceString === 'string' ? parseInt(priceString, 10) : priceString;
     if (amount && amount > 0) {
-      return amount / 100; // Convert from cents to reais
+      return amount; // Already in Reais, no division needed
     }
   }
 
@@ -137,7 +138,7 @@ export function getMinProductPrice(product: any): number {
         if (v.actualPriceRange?.minValue?.amount) {
           const priceString = v.actualPriceRange.minValue.amount;
           const amount = typeof priceString === 'string' ? parseInt(priceString, 10) : priceString;
-          return amount ? amount / 100 : 0;
+          return amount ? amount : 0; // Already in Reais
         }
         return v.price || v.priceData?.price || 0;
       })
