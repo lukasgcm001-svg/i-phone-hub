@@ -8,6 +8,7 @@ import WhatsAppButton from '@/components/WhatsAppButton';
 import { Image } from '@/components/ui/image';
 import { BaseCrudService } from '@/integrations';
 import { convertWixImageUrl, getMinProductPrice, convertAndFormatPrice } from '@/lib/wix-image-utils';
+import { categories } from '@wix/categories';
 
 // --- Constants ---
 const FEATURED_CATEGORY_ID = 'a7f817f7-8ac1-43b2-91c3-9072a41ad0fa';
@@ -525,31 +526,31 @@ function FeaturedProducts() {
     const loadProducts = async () => {
       try {
         setIsLoading(true);
-        // Fetch all products from Wix Stores
+        
+        // Get items in the Featured category using Wix Categories API
+        const categoryItems = await categories.listItemsInCategory(FEATURED_CATEGORY_ID, {
+          appId: '215238eb-22a5-4c36-9e7b-e7c08025e04e'
+        });
+        
+        // Extract catalogItemIds from the response
+        const featuredItemIds = (categoryItems.items || []).map((item: any) => item.catalogItemId);
+        
+        if (featuredItemIds.length === 0) {
+          setProducts([]);
+          return;
+        }
+        
+        // Fetch products from StoreCatalog/Products and filter by the featured item IDs
         const result = await BaseCrudService.getAll<Product>('StoreCatalog/Products', {}, { limit: 100 });
         
-        // Filter products by mainCategoryId
-        const featuredProducts = (result.items || []).filter((product, index) => {
-          const productAny = product as any;
-          
-          // Debug logs for each product
-          console.log(`Product ${index}:`, {
-            name: productAny.name,
-            mainCategoryId: productAny.mainCategoryId,
-            FEATURED_CATEGORY_ID: FEATURED_CATEGORY_ID
-          });
-          
-          // Log complete object of first product
-          if (index === 0) {
-            console.log('First product complete object:', JSON.stringify(productAny, null, 2));
-          }
-          
-          return productAny.mainCategoryId === FEATURED_CATEGORY_ID;
-        }).slice(0, 4);
+        const featuredProducts = (result.items || [])
+          .filter((product) => featuredItemIds.includes(product._id))
+          .slice(0, 4);
         
         setProducts(featuredProducts);
       } catch (error) {
         console.error('Error loading featured products:', error);
+        setProducts([]);
       } finally {
         setIsLoading(false);
       }
