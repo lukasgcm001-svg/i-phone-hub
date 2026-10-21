@@ -528,11 +528,25 @@ function FeaturedProducts() {
         // Fetch all products from Wix Stores and filter by featured category
         const result = await BaseCrudService.getAll<Product>('StoreCatalog/Products', {}, { limit: 100 });
         
+        // DEBUG: Log raw results
+        console.log('Raw result.items:', result.items);
+        if (result.items && result.items.length > 0) {
+          console.log('First product structure:', result.items[0]);
+          console.log('Category-related fields in first product:');
+          const firstProduct = result.items[0] as any;
+          console.log('  - categories:', firstProduct.categories);
+          console.log('  - collectionIds:', firstProduct.collectionIds);
+          console.log('  - collections:', firstProduct.collections);
+          console.log('  - categoryIds:', firstProduct.categoryIds);
+          console.log('All keys:', Object.keys(firstProduct));
+        }
+        
         // Filter products that belong to the featured category
         const featuredProducts = (result.items || []).filter(product => 
           product.categories?.includes(FEATURED_CATEGORY_ID)
         ).slice(0, 4);
         
+        console.log('Filtered featured products:', featuredProducts);
         setProducts(featuredProducts);
       } catch (error) {
         console.error('Error loading featured products:', error);
