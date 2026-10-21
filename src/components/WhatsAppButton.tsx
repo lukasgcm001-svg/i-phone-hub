@@ -1,13 +1,19 @@
 import { motion } from 'framer-motion';
 import { MessageCircle } from 'lucide-react';
 
+// Constante com número do WhatsApp (apenas dígitos com DDD)
+const WHATSAPP_NUMBER = '';
+
 export default function WhatsAppButton() {
-  const whatsappNumber = '[NÚMERO DO WHATSAPP]';
   const whatsappMessage = encodeURIComponent('Olá, vim pelo site e quero saber sobre um iPhone.');
+
+  if (!WHATSAPP_NUMBER) {
+    return null;
+  }
 
   return (
     <motion.a
-      href={`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`}
+      href={`https://wa.me/55${WHATSAPP_NUMBER}?text=${whatsappMessage}`}
       target="_blank"
       rel="noopener noreferrer"
       initial={{ scale: 0 }}

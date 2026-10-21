@@ -10,6 +10,9 @@ import { BaseCrudService } from '@/integrations';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { convertWixImageUrl, getMinProductPrice, capitalizeFirstLetter } from '@/lib/wix-image-utils';
 
+// Constante com número do WhatsApp (apenas dígitos com DDD)
+const WHATSAPP_NUMBER = '';
+
 interface ProductVariant {
   _id: string;
   name?: string;
@@ -47,11 +50,8 @@ interface ProductVariant {
 
 interface OptionChoice {
   choiceId?: string;
-  description?: string;
+  name?: string;
   colorCode?: string;
-  linkedMedia?: {
-    image?: string;
-  };
 }
 
 interface OptionChoiceName {
@@ -60,7 +60,7 @@ interface OptionChoiceName {
 }
 
 interface ProductOption {
-  optionName?: string;
+  name?: string;
   choicesSettings?: {
     choices?: OptionChoice[];
   };
@@ -167,15 +167,15 @@ export default function ProdutoPage() {
     variants.forEach(variant => {
       if (variant.optionChoices && Array.isArray(variant.optionChoices)) {
         variant.optionChoices.forEach(choice => {
-          if (choice.optionChoiceNames && Array.isArray(choice.optionChoiceNames)) {
-            choice.optionChoiceNames.forEach((ocn: OptionChoiceName) => {
-              if (ocn.optionName && ocn.choiceName) {
-                if (!optionsMap[ocn.optionName]) {
-                  optionsMap[ocn.optionName] = new Set();
-                }
-                optionsMap[ocn.optionName].add(ocn.choiceName);
+          // optionChoiceNames é um OBJETO, não array
+          if (choice.optionChoiceNames && typeof choice.optionChoiceNames === 'object' && !Array.isArray(choice.optionChoiceNames)) {
+            const ocn = choice.optionChoiceNames as OptionChoiceName;
+            if (ocn.optionName && ocn.choiceName) {
+              if (!optionsMap[ocn.optionName]) {
+                optionsMap[ocn.optionName] = new Set();
               }
-            });
+              optionsMap[ocn.optionName].add(ocn.choiceName);
+            }
           }
         });
       }
@@ -194,25 +194,25 @@ export default function ProdutoPage() {
     let matchingVariant: ProductVariant | null = null;
 
     // Get the selected color and storage choiceIds
-    const colorOption = product.options?.find(opt => opt.optionName === 'Cor');
-    const storageOption = product.options?.find(opt => opt.optionName === 'Armazenamento');
+    const colorOption = product.options?.find(opt => opt.name === 'Cor');
+    const storageOption = product.options?.find(opt => opt.name === 'Armazenamento');
 
     const selectedColorName = selectedOptions['Cor'];
     const selectedStorageName = selectedOptions['Armazenamento'];
 
     // Get choiceIds for selected options
     const selectedColorChoiceId = colorOption?.choicesSettings?.choices?.find(
-      c => c.description === selectedColorName
+      c => c.name === selectedColorName
     )?.choiceId;
     const selectedStorageChoiceId = storageOption?.choicesSettings?.choices?.find(
-      c => c.description === selectedStorageName
+      c => c.name === selectedStorageName
     )?.choiceId;
 
     // Find variant with matching optionChoices
     if (selectedColorChoiceId && selectedStorageChoiceId) {
       matchingVariant = variants.find(variant => {
         if (!variant.optionChoices || variant.optionChoices.length < 2) return false;
-        const choiceIds = variant.optionChoices.map(oc => oc.choiceId);
+        const choiceIds = variant.optionChoices.map(oc => oc.optionChoiceIds?.choiceId);
         return (
           choiceIds.includes(selectedColorChoiceId) &&
           choiceIds.includes(selectedStorageChoiceId)
@@ -220,7 +220,7 @@ export default function ProdutoPage() {
       }) || null;
     }
 
-    // Update main image if variant has media
+    // Update main image if variant has media (use primeira variante com essa cor)
     if (matchingVariant?.media?.image) {
       const convertedImage = convertWixImageUrl(matchingVariant.media.image);
       if (convertedImage) {
@@ -229,17 +229,22 @@ export default function ProdutoPage() {
     }
   }, [selectedOptions, variants, product]);
 
-  // Handle color selection with linkedMedia
+  // Handle color selection with variant image
   const handleColorChange = (colorChoice: OptionChoice) => {
-    const colorName = colorChoice.description || '';
+    const colorName = colorChoice.name || '';
     setSelectedOptions(prev => ({
       ...prev,
       'Cor': colorName
     }));
 
-    // Update main image if linkedMedia exists
-    if (colorChoice.linkedMedia?.image) {
-      const convertedImage = convertWixImageUrl(colorChoice.linkedMedia.image);
+    // Update main image to first variant with this color
+    const firstVariantWithColor = variants.find(variant => {
+      if (!variant.optionChoices) return false;
+      return variant.optionChoices.some(oc => oc.optionChoiceIds?.choiceId === colorChoice.choiceId);
+    });
+
+    if (firstVariantWithColor?.media?.image) {
+      const convertedImage = convertWixImageUrl(firstVariantWithColor.media.image);
       if (convertedImage) {
         setMainImage(convertedImage);
       }
@@ -259,23 +264,23 @@ export default function ProdutoPage() {
       return getMinProductPrice(product);
     }
 
-    const colorOption = product.options?.find(opt => opt.optionName === 'Cor');
-    const storageOption = product.options?.find(opt => opt.optionName === 'Armazenamento');
+    const colorOption = product.options?.find(opt => opt.name === 'Cor');
+    const storageOption = product.options?.find(opt => opt.name === 'Armazenamento');
 
     const selectedColorName = selectedOptions['Cor'];
     const selectedStorageName = selectedOptions['Armazenamento'];
 
     const selectedColorChoiceId = colorOption?.choicesSettings?.choices?.find(
-      c => c.description === selectedColorName
+      c => c.name === selectedColorName
     )?.choiceId;
     const selectedStorageChoiceId = storageOption?.choicesSettings?.choices?.find(
-      c => c.description === selectedStorageName
+      c => c.name === selectedStorageName
     )?.choiceId;
 
     if (selectedColorChoiceId && selectedStorageChoiceId) {
       const matchingVariant = variants.find(variant => {
         if (!variant.optionChoices || variant.optionChoices.length < 2) return false;
-        const choiceIds = variant.optionChoices.map(oc => oc.choiceId);
+        const choiceIds = variant.optionChoices.map(oc => oc.optionChoiceIds?.choiceId);
         return (
           choiceIds.includes(selectedColorChoiceId) &&
           choiceIds.includes(selectedStorageChoiceId)
@@ -284,7 +289,7 @@ export default function ProdutoPage() {
 
       if (matchingVariant?.price?.actualPrice?.amount) {
         const priceString = matchingVariant.price.actualPrice.amount;
-        const amount = typeof priceString === 'string' ? parseInt(priceString, 10) : priceString;
+        const amount = typeof priceString === 'string' ? parseFloat(priceString) : priceString;
         if (amount && amount > 0) {
           return amount;
         }
@@ -303,7 +308,7 @@ export default function ProdutoPage() {
       .map(v => {
         if (v.price?.actualPrice?.amount) {
           const priceString = v.price.actualPrice.amount;
-          const amount = typeof priceString === 'string' ? parseInt(priceString, 10) : priceString;
+          const amount = typeof priceString === 'string' ? parseFloat(priceString) : priceString;
           return amount || 0;
         }
         return 0;
@@ -338,7 +343,7 @@ export default function ProdutoPage() {
 
   // Get options to display - prefer product.options, fallback to variant options
   const getColorOptions = (): OptionChoice[] => {
-    const colorOption = product?.options?.find(opt => opt.optionName === 'Cor');
+    const colorOption = product?.options?.find(opt => opt.name === 'Cor');
     if (colorOption?.choicesSettings?.choices) {
       return colorOption.choicesSettings.choices;
     }
@@ -347,7 +352,7 @@ export default function ProdutoPage() {
     if (variantOptions['Cor'] && variantOptions['Cor'].size > 0) {
       return Array.from(variantOptions['Cor']).map(colorName => ({
         choiceId: colorName,
-        description: colorName,
+        name: colorName,
         colorCode: undefined
       }));
     }
@@ -356,7 +361,7 @@ export default function ProdutoPage() {
   };
 
   const getStorageOptions = (): OptionChoice[] => {
-    const storageOption = product?.options?.find(opt => opt.optionName === 'Armazenamento');
+    const storageOption = product?.options?.find(opt => opt.name === 'Armazenamento');
     if (storageOption?.choicesSettings?.choices) {
       return storageOption.choicesSettings.choices;
     }
@@ -365,7 +370,7 @@ export default function ProdutoPage() {
     if (variantOptions['Armazenamento'] && variantOptions['Armazenamento'].size > 0) {
       return Array.from(variantOptions['Armazenamento']).map(storageName => ({
         choiceId: storageName,
-        description: storageName
+        name: storageName
       }));
     }
 
@@ -493,7 +498,7 @@ export default function ProdutoPage() {
                       key={choice.choiceId}
                       onClick={() => handleColorChange(choice)}
                       className={`px-6 py-3 rounded-[6px] font-paragraph font-medium transition-all flex items-center gap-2 ${
-                        selectedOptions['Cor'] === choice.description
+                        selectedOptions['Cor'] === choice.name
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-surface border border-line text-foreground hover:border-primary'
                       }`}
@@ -504,7 +509,7 @@ export default function ProdutoPage() {
                           style={{ backgroundColor: choice.colorCode }}
                         />
                       )}
-                      {capitalizeFirstLetter(choice.description || '')}
+                      {capitalizeFirstLetter(choice.name || '')}
                     </button>
                   ))}
                 </div>
@@ -528,16 +533,16 @@ export default function ProdutoPage() {
                       onClick={() =>
                         setSelectedOptions(prev => ({
                           ...prev,
-                          'Armazenamento': choice.description || ''
+                          'Armazenamento': choice.name || ''
                         }))
                       }
                       className={`px-6 py-3 rounded-[6px] font-paragraph font-medium transition-all ${
-                        selectedOptions['Armazenamento'] === choice.description
+                        selectedOptions['Armazenamento'] === choice.name
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-surface border border-line text-foreground hover:border-primary'
                       }`}
                     >
-                      {choice.description}
+                      {choice.name}
                     </button>
                   ))}
                 </div>
@@ -591,9 +596,15 @@ export default function ProdutoPage() {
                     return;
                   }
 
-                  const message = `Olá! Tenho interesse no ${product.name}, cor ${selectedColor}, ${selectedStorage}, por ${formatPrice(price)}.`;
+                  if (!WHATSAPP_NUMBER) {
+                    alert('Número do WhatsApp não configurado');
+                    return;
+                  }
+
+                  const capitalizedColor = capitalizeFirstLetter(selectedColor);
+                  const message = `Olá! Tenho interesse no ${product.name}, cor ${capitalizedColor}, ${selectedStorage}, por ${formatPrice(price)}.`;
                   const encodedMessage = encodeURIComponent(message);
-                  window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+                  window.open(`https://wa.me/55${WHATSAPP_NUMBER}?text=${encodedMessage}`, '_blank');
                 }}
                 disabled={!selectedOptions['Cor'] || !selectedOptions['Armazenamento']}
                 className={`flex-1 inline-flex items-center justify-center px-8 py-4 rounded-[6px] font-paragraph font-semibold transition-all ${
