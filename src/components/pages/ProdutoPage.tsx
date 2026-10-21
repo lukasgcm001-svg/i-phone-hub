@@ -11,7 +11,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { convertWixImageUrl, getMinProductPrice, capitalizeFirstLetter } from '@/lib/wix-image-utils';
 
 // Constante com número do WhatsApp (apenas dígitos com DDD)
-const WHATSAPP_NUMBER = '';
+const WHATSAPP_NUMBER = '31900000000';
 
 interface ProductVariant {
   _id: string;
@@ -102,7 +102,7 @@ export default function ProdutoPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, { name: string; choiceId: string }>>({});
   const [mainImage, setMainImage] = useState<string>('');
 
   useEffect(() => {
@@ -232,9 +232,10 @@ export default function ProdutoPage() {
   // Handle color selection with variant image
   const handleColorChange = (colorChoice: OptionChoice) => {
     const colorName = colorChoice.name || '';
+    const choiceId = colorChoice.choiceId || '';
     setSelectedOptions(prev => ({
       ...prev,
-      'Cor': colorName
+      'Cor': { name: colorName, choiceId }
     }));
 
     // Update main image to first variant with this color
@@ -267,15 +268,8 @@ export default function ProdutoPage() {
     const colorOption = product.options?.find(opt => opt.name === 'Cor');
     const storageOption = product.options?.find(opt => opt.name === 'Armazenamento');
 
-    const selectedColorName = selectedOptions['Cor'];
-    const selectedStorageName = selectedOptions['Armazenamento'];
-
-    const selectedColorChoiceId = colorOption?.choicesSettings?.choices?.find(
-      c => c.name === selectedColorName
-    )?.choiceId;
-    const selectedStorageChoiceId = storageOption?.choicesSettings?.choices?.find(
-      c => c.name === selectedStorageName
-    )?.choiceId;
+    const selectedColorChoiceId = selectedOptions['Cor']?.choiceId;
+    const selectedStorageChoiceId = selectedOptions['Armazenamento']?.choiceId;
 
     if (selectedColorChoiceId && selectedStorageChoiceId) {
       const matchingVariant = variants.find(variant => {
@@ -304,6 +298,79 @@ export default function ProdutoPage() {
       return getMinProductPrice(product);
     }
 
+    const selectedColorChoiceId = selectedOptions['Cor']?.choiceId;
+    const selectedStorageChoiceId = selectedOptions['Armazenamento']?.choiceId;
+
+    // Se ambas as opções estão escolhidas, retorna o preço exato dessa variante
+    if (selectedColorChoiceId && selectedStorageChoiceId) {
+      const matchingVariant = variants.find(variant => {
+        if (!variant.optionChoices || variant.optionChoices.length < 2) return false;
+        const choiceIds = variant.optionChoices.map(oc => oc.optionChoiceIds?.choiceId);
+        return (
+          choiceIds.includes(selectedColorChoiceId) &&
+          choiceIds.includes(selectedStorageChoiceId)
+        );
+      });
+
+      if (matchingVariant?.price?.actualPrice?.amount) {
+        const priceString = matchingVariant.price.actualPrice.amount;
+        const amount = typeof priceString === 'string' ? parseFloat(priceString) : priceString;
+        if (amount && amount > 0) {
+          return amount;
+        }
+      }
+    }
+
+    // Se só uma opção está escolhida, retorna o menor preço entre as variantes que combinam
+    if (selectedColorChoiceId && !selectedStorageChoiceId) {
+      const matchingVariants = variants.filter(variant => {
+        if (!variant.optionChoices) return false;
+        return variant.optionChoices.some(oc => oc.optionChoiceIds?.choiceId === selectedColorChoiceId);
+      });
+
+      if (matchingVariants.length > 0) {
+        const prices = matchingVariants
+          .map(v => {
+            if (v.price?.actualPrice?.amount) {
+              const priceString = v.price.actualPrice.amount;
+              const amount = typeof priceString === 'string' ? parseFloat(priceString) : priceString;
+              return amount || 0;
+            }
+            return 0;
+          })
+          .filter(p => p > 0);
+
+        if (prices.length > 0) {
+          return Math.min(...prices);
+        }
+      }
+    }
+
+    if (!selectedColorChoiceId && selectedStorageChoiceId) {
+      const matchingVariants = variants.filter(variant => {
+        if (!variant.optionChoices) return false;
+        return variant.optionChoices.some(oc => oc.optionChoiceIds?.choiceId === selectedStorageChoiceId);
+      });
+
+      if (matchingVariants.length > 0) {
+        const prices = matchingVariants
+          .map(v => {
+            if (v.price?.actualPrice?.amount) {
+              const priceString = v.price.actualPrice.amount;
+              const amount = typeof priceString === 'string' ? parseFloat(priceString) : priceString;
+              return amount || 0;
+            }
+            return 0;
+          })
+          .filter(p => p > 0);
+
+        if (prices.length > 0) {
+          return Math.min(...prices);
+        }
+      }
+    }
+
+    // Se nada está escolhido, retorna o menor preço geral
     const prices = variants
       .map(v => {
         if (v.price?.actualPrice?.amount) {
@@ -482,7 +549,9 @@ export default function ProdutoPage() {
                 {product.name}
               </h1>
               <p className="text-3xl font-heading font-bold text-primary">
-                a partir de {formatPrice(getMinPrice())}
+                {selectedOptions['Cor']?.choiceId && selectedOptions['Armazenamento']?.choiceId
+                  ? formatPrice(getMinPrice())
+                  : `a partir de ${formatPrice(getMinPrice())}`}
               </p>
             </div>
 
@@ -498,7 +567,7 @@ export default function ProdutoPage() {
                       key={choice.choiceId}
                       onClick={() => handleColorChange(choice)}
                       className={`px-6 py-3 rounded-[6px] font-paragraph font-medium transition-all flex items-center gap-2 ${
-                        selectedOptions['Cor'] === choice.name
+                        selectedOptions['Cor']?.choiceId === choice.choiceId
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-surface border border-line text-foreground hover:border-primary'
                       }`}
@@ -533,11 +602,11 @@ export default function ProdutoPage() {
                       onClick={() =>
                         setSelectedOptions(prev => ({
                           ...prev,
-                          'Armazenamento': choice.name || ''
+                          'Armazenamento': { name: choice.name || '', choiceId: choice.choiceId || '' }
                         }))
                       }
                       className={`px-6 py-3 rounded-[6px] font-paragraph font-medium transition-all ${
-                        selectedOptions['Armazenamento'] === choice.name
+                        selectedOptions['Armazenamento']?.choiceId === choice.choiceId
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-surface border border-line text-foreground hover:border-primary'
                       }`}
@@ -587,8 +656,8 @@ export default function ProdutoPage() {
             <div className="flex flex-col sm:flex-row gap-4">
               <button
                 onClick={() => {
-                  const selectedColor = selectedOptions['Cor'];
-                  const selectedStorage = selectedOptions['Armazenamento'];
+                  const selectedColor = selectedOptions['Cor']?.name;
+                  const selectedStorage = selectedOptions['Armazenamento']?.name;
                   const price = getSelectedVariantPrice();
 
                   if (!selectedColor || !selectedStorage) {
@@ -606,9 +675,9 @@ export default function ProdutoPage() {
                   const encodedMessage = encodeURIComponent(message);
                   window.open(`https://wa.me/55${WHATSAPP_NUMBER}?text=${encodedMessage}`, '_blank');
                 }}
-                disabled={!selectedOptions['Cor'] || !selectedOptions['Armazenamento']}
+                disabled={!selectedOptions['Cor']?.choiceId || !selectedOptions['Armazenamento']?.choiceId}
                 className={`flex-1 inline-flex items-center justify-center px-8 py-4 rounded-[6px] font-paragraph font-semibold transition-all ${
-                  selectedOptions['Cor'] && selectedOptions['Armazenamento']
+                  selectedOptions['Cor']?.choiceId && selectedOptions['Armazenamento']?.choiceId
                     ? 'bg-primary text-primary-foreground hover:scale-[1.02] active:scale-[0.98] cursor-pointer'
                     : 'bg-surface border border-line text-secondary cursor-not-allowed opacity-50'
                 }`}

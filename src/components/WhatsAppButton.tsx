@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { MessageCircle } from 'lucide-react';
 
 // Constante com número do WhatsApp (apenas dígitos com DDD)
-const WHATSAPP_NUMBER = '';
+const WHATSAPP_NUMBER = '31900000000';
 
 export default function WhatsAppButton() {
   const whatsappMessage = encodeURIComponent('Olá, vim pelo site e quero saber sobre um iPhone.');
