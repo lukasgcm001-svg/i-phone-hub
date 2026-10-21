@@ -1,5 +1,5 @@
 // HPI 1.7-G
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { Shield, Headphones, Award, ChevronDown, ArrowRight, Smartphone } from 'lucide-react';
@@ -7,6 +7,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import { Image } from '@/components/ui/image';
+import { BaseCrudService } from '@/integrations';
 
 // --- Types ---
 interface FAQ {
@@ -24,6 +25,19 @@ interface Feature {
   icon: React.ElementType;
   title: string;
   desc: string;
+}
+
+interface Product {
+  _id: string;
+  name: string;
+  price: number;
+  mainImage?: {
+    url: string;
+  };
+  variants?: Array<{
+    _id: string;
+    price: number;
+  }>;
 }
 
 export default function HomePage() {
@@ -267,7 +281,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* --- DESTAQUES (Placeholder - Architectural Container) --- */}
+      {/* --- DESTAQUES (Products from Wix Stores) --- */}
       <section className="relative w-full bg-surface py-32 border-b border-line overflow-hidden">
         <div className="absolute inset-0 tech-grid opacity-30 pointer-events-none" />
         
@@ -289,24 +303,8 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {/* The Terminal/Blueprint Container */}
-          <div className="w-full min-h-[400px] border border-line rounded-[6px] bg-background/50 backdrop-blur-sm flex flex-col items-center justify-center p-12 relative group">
-            {/* Corner Accents */}
-            <div className="absolute top-0 left-0 w-4 h-4 border-t border-l border-primary/50" />
-            <div className="absolute top-0 right-0 w-4 h-4 border-t border-r border-primary/50" />
-            <div className="absolute bottom-0 left-0 w-4 h-4 border-b border-l border-primary/50" />
-            <div className="absolute bottom-0 right-0 w-4 h-4 border-b border-r border-primary/50" />
-            
-            <Smartphone className="w-12 h-12 text-line mb-6 group-hover:text-primary/50 transition-colors duration-500" />
-            <p className="text-secondary font-paragraph text-lg text-center max-w-md">
-              Módulo de integração pendente. Esta seção será conectada ao inventário do Wix Stores.
-            </p>
-            <div className="mt-8 flex gap-2">
-              <span className="w-2 h-2 bg-line rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-              <span className="w-2 h-2 bg-line rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-              <span className="w-2 h-2 bg-line rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
-            </div>
-          </div>
+          {/* Products Grid */}
+          <FeaturedProducts />
         </div>
       </section>
 
@@ -468,8 +466,6 @@ export default function HomePage() {
   );
 }
 
-// --- Subcomponents ---
-
 function FAQItem({ faq, index }: { faq: FAQ; index: number }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -509,5 +505,103 @@ function FAQItem({ faq, index }: { faq: FAQ; index: number }) {
         )}
       </AnimatePresence>
     </motion.div>
+  );
+}
+
+function FeaturedProducts() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setIsLoading(true);
+        // Fetch products from Wix Stores - limit to 4 for featured section
+        const result = await BaseCrudService.getAll<Product>('StoreCatalog/Products', {}, { limit: 4 });
+        setProducts(result.items || []);
+      } catch (error) {
+        console.error('Error loading featured products:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, []);
+
+  const getMinPrice = (product: Product): number => {
+    if (product.variants && product.variants.length > 0) {
+      return Math.min(...product.variants.map(v => v.price || product.price));
+    }
+    return product.price || 0;
+  };
+
+  const formatPrice = (price: number): string => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(price);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="bg-background border border-line rounded-[6px] p-6 animate-pulse">
+            <div className="w-full h-48 bg-line rounded-[4px] mb-4" />
+            <div className="h-6 bg-line rounded mb-2" />
+            <div className="h-4 bg-line rounded w-1/2" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {products.map((product, index) => (
+        <motion.div
+          key={product._id}
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: index * 0.1 }}
+          className="group bg-background border border-line rounded-[6px] overflow-hidden hover:border-primary transition-all duration-300"
+        >
+          {/* Product Image */}
+          <div className="relative w-full h-48 bg-surface overflow-hidden">
+            {product.mainImage?.url ? (
+              <Image
+                src={product.mainImage.url}
+                alt={product.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-line/20">
+                <span className="text-secondary text-sm">Sem imagem</span>
+              </div>
+            )}
+          </div>
+
+          {/* Product Info */}
+          <div className="p-4">
+            <h3 className="text-base font-heading font-semibold text-foreground mb-2 line-clamp-2">
+              {product.name}
+            </h3>
+            
+            <p className="text-sm text-secondary font-paragraph mb-4">
+              a partir de <span className="text-primary font-semibold">{formatPrice(getMinPrice(product))}</span>
+            </p>
+
+            <Link
+              to={`/produto/${product._id}`}
+              className="w-full inline-flex items-center justify-center bg-primary text-primary-foreground px-4 py-2 rounded-[6px] font-paragraph font-semibold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              Ver Detalhes
+            </Link>
+          </div>
+        </motion.div>
+      ))}
+    </div>
   );
 }

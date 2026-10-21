@@ -4,6 +4,7 @@ import { ScrollToTop } from '@/lib/scroll-to-top';
 import ErrorPage from '@/integrations/errorHandlers/ErrorPage';
 import HomePage from '@/components/pages/HomePage';
 import LojaPage from '@/components/pages/LojaPage';
+import ProdutoPage from '@/components/pages/ProdutoPage';
 import ComoComprarPage from '@/components/pages/ComoComprarPage';
 import GarantiaPage from '@/components/pages/GarantiaPage';
 import ContatoPage from '@/components/pages/ContatoPage';
@@ -36,6 +37,13 @@ const router = createBrowserRouter([
         element: <LojaPage />,
         routeMetadata: {
           pageIdentifier: 'loja',
+        },
+      },
+      {
+        path: "produto/:id",
+        element: <ProdutoPage />,
+        routeMetadata: {
+          pageIdentifier: 'produto',
         },
       },
       {
