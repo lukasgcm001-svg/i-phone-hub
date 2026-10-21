@@ -529,8 +529,21 @@ function FeaturedProducts() {
         const result = await BaseCrudService.getAll<Product>('StoreCatalog/Products', {}, { limit: 100 });
         
         // Filter products by mainCategoryId
-        const featuredProducts = (result.items || []).filter(product => {
+        const featuredProducts = (result.items || []).filter((product, index) => {
           const productAny = product as any;
+          
+          // Debug logs for each product
+          console.log(`Product ${index}:`, {
+            name: productAny.name,
+            mainCategoryId: productAny.mainCategoryId,
+            FEATURED_CATEGORY_ID: FEATURED_CATEGORY_ID
+          });
+          
+          // Log complete object of first product
+          if (index === 0) {
+            console.log('First product complete object:', JSON.stringify(productAny, null, 2));
+          }
+          
           return productAny.mainCategoryId === FEATURED_CATEGORY_ID;
         }).slice(0, 4);
         
