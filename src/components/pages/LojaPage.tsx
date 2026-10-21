@@ -7,7 +7,7 @@ import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import { Image } from '@/components/ui/image';
 import { BaseCrudService } from '@/integrations';
-import { convertWixImageUrl, getMinProductPrice } from '@/lib/wix-image-utils';
+import { convertWixImageUrl, getMinProductPrice, convertAndFormatPrice } from '@/lib/wix-image-utils';
 
 interface Product {
   _id: string;
@@ -80,8 +80,8 @@ export default function LojaPage() {
   }, [selectedCategory, products]);
 
   const getProductImage = (product: Product): string | undefined => {
-    // Try various image field names in Wix Stores
-    const imageUrl = product.mainImage?.url || product.image?.url || product.media?.mainMedia?.image?.url;
+    // Use media.main.image from Wix Stores
+    const imageUrl = product.media?.main?.image;
     return convertWixImageUrl(imageUrl);
   };
 
