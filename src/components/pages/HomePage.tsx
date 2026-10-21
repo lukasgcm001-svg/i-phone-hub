@@ -529,8 +529,10 @@ function FeaturedProducts() {
         
         // Get items in the Featured category using Wix Categories API
         const categoryItems = await categories.listItemsInCategory(FEATURED_CATEGORY_ID, {
-          appId: '215238eb-22a5-4c36-9e7b-e7c08025e04e'
+          treeReference: { appNamespace: '@wix/stores' },
         });
+        
+        console.log('Raw listItemsInCategory result:', categoryItems);
         
         // Extract catalogItemIds from the response
         const featuredItemIds = (categoryItems.items || []).map((item: any) => item.catalogItemId);
@@ -550,6 +552,7 @@ function FeaturedProducts() {
         setProducts(featuredProducts);
       } catch (error) {
         console.error('Error loading featured products:', error);
+        console.log('Full error object:', error);
         setProducts([]);
       } finally {
         setIsLoading(false);
