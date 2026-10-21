@@ -8,6 +8,7 @@ import ProdutoPage from '@/components/pages/ProdutoPage';
 import ComoComprarPage from '@/components/pages/ComoComprarPage';
 import GarantiaPage from '@/components/pages/GarantiaPage';
 import ContatoPage from '@/components/pages/ContatoPage';
+import DebugProdutoPage from '@/components/pages/DebugProdutoPage';
 
 // Layout component that includes ScrollToTop
 function Layout() {
@@ -65,6 +66,13 @@ const router = createBrowserRouter([
         element: <ContatoPage />,
         routeMetadata: {
           pageIdentifier: 'contato',
+        },
+      },
+      {
+        path: "debug-produto",
+        element: <DebugProdutoPage />,
+        routeMetadata: {
+          pageIdentifier: 'debug-produto',
         },
       },
       {
