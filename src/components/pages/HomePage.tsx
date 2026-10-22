@@ -528,9 +528,10 @@ function FeaturedProducts() {
         setIsLoading(true);
         
         // Get items in the Featured category using Wix Categories API
-        const categoryItems = await categories.listItemsInCategory(FEATURED_CATEGORY_ID, {
-          treeReference: { appNamespace: '@wix/stores' },
-        });
+        const categoryItems = await categories.listItemsInCategory(
+          FEATURED_CATEGORY_ID,
+          { appNamespace: '@wix/stores' }
+        );
         
         console.log('Raw listItemsInCategory result:', categoryItems);
         
@@ -543,7 +544,7 @@ function FeaturedProducts() {
         }
         
         // Fetch products from StoreCatalog/Products and filter by the featured item IDs
-        const result = await BaseCrudService.getAll<Product>('StoreCatalog/Products', {}, { limit: 100 });
+        const result = await BaseCrudService.getAll<Product>('StoreCatalog/Products', {}, { limit: 4 });
         
         const featuredProducts = (result.items || [])
           .filter((product) => featuredItemIds.includes(product._id))
