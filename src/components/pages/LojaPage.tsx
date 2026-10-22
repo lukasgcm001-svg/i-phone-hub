@@ -8,6 +8,7 @@ import WhatsAppButton from '@/components/WhatsAppButton';
 import { Image } from '@/components/ui/image';
 import { BaseCrudService } from '@/integrations';
 import { convertWixImageUrl, getMinProductPrice, convertAndFormatPrice } from '@/lib/wix-image-utils';
+import { categories } from '@wix/categories';
 
 interface Product {
   _id: string;
@@ -34,7 +35,12 @@ interface Product {
 interface Category {
   _id: string;
   name: string;
+  displayOrder?: number;
 }
+
+// Constants
+const FEATURED_CATEGORY_ID = 'a7f817f7-8ac1-43b2-91c3-9072a41ad0fa';
+const ROOT_CATEGORY_NAME = 'Todos os produtos';
 
 export default function LojaPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -43,21 +49,53 @@ export default function LojaPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
 
+  // Load categories from Wix Categories API
   useEffect(() => {
-    const loadData = async () => {
+    const loadCategories = async () => {
+      try {
+        const result = await categories.queryCategories({
+          query: {
+            filter: {
+              'treeReference.appNamespace': '@wix/stores',
+              'visible': true
+            }
+          }
+        });
+
+        console.log('Raw queryCategories result:', result);
+
+        const allCategories = (result.items || [])
+          .filter((cat: any) => {
+            // Exclude root category and featured category
+            return cat.name !== ROOT_CATEGORY_NAME && cat._id !== FEATURED_CATEGORY_ID;
+          })
+          .sort((a: any, b: any) => {
+            // Sort by displayOrder if available, otherwise alphabetically
+            if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
+              return a.displayOrder - b.displayOrder;
+            }
+            return (a.name || '').localeCompare(b.name || '');
+          });
+
+        console.log('Filtered and sorted categories:', allCategories);
+        setCategories(allCategories);
+      } catch (error) {
+        console.error('Error loading categories:', error);
+        console.log('Full error object:', error);
+      }
+    };
+
+    loadCategories();
+  }, []);
+
+  // Load all products
+  useEffect(() => {
+    const loadProducts = async () => {
       try {
         setIsLoading(true);
-        
-        // Fetch products from Wix Stores
         const productsResult = await BaseCrudService.getAll<Product>('StoreCatalog/Products', {}, { limit: 100 });
         const allProducts = productsResult.items || [];
-        
-        // Fetch categories
-        const categoriesResult = await BaseCrudService.getAll<Category>('StoreCatalog/Categories', {}, { limit: 100 });
-        const allCategories = categoriesResult.items || [];
-        
         setProducts(allProducts);
-        setCategories(allCategories);
         setFilteredProducts(allProducts);
       } catch (error) {
         console.error('Error loading products:', error);
@@ -66,18 +104,48 @@ export default function LojaPage() {
       }
     };
 
-    loadData();
+    loadProducts();
   }, []);
 
+  // Filter products by selected category
   useEffect(() => {
     if (selectedCategory) {
-      const filtered = products.filter(product => {
-        // Filter by mainCategoryId matching the selected category ID
-        return product.mainCategoryId === selectedCategory;
-      });
-      setFilteredProducts(filtered);
+      const filterProductsByCategory = async () => {
+        try {
+          setIsLoading(true);
+          
+          // Get items in the selected category
+          const categoryItems = await categories.listItemsInCategory(
+            selectedCategory,
+            { appNamespace: '@wix/stores' }
+          );
+
+          console.log(`Raw listItemsInCategory result for category ${selectedCategory}:`, categoryItems);
+
+          // Extract catalogItemIds
+          const categoryItemIds = (categoryItems.items || []).map((item: any) => item.catalogItemId);
+
+          if (categoryItemIds.length === 0) {
+            setFilteredProducts([]);
+            return;
+          }
+
+          // Filter products by the category item IDs
+          const filtered = products.filter(product => categoryItemIds.includes(product._id));
+          setFilteredProducts(filtered);
+        } catch (error) {
+          console.error(`Error filtering products for category ${selectedCategory}:`, error);
+          console.log('Full error object:', error);
+          setFilteredProducts([]);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      filterProductsByCategory();
     } else {
       setFilteredProducts(products);
+      setIsLoading(false);
     }
   }, [selectedCategory, products]);
 
@@ -129,30 +197,19 @@ export default function LojaPage() {
           >
             Todos
           </button>
-          {categories
-            .filter(category => {
-              // Only show iPhone 17 and iPhone 16 categories
-              return category.name === 'iPhone 17' || category.name === 'iPhone 16';
-            })
-            .sort((a, b) => {
-              // Sort: iPhone 17 first, then iPhone 16
-              if (a.name === 'iPhone 17') return -1;
-              if (b.name === 'iPhone 17') return 1;
-              return 0;
-            })
-            .map(category => (
-              <button
-                key={category._id}
-                onClick={() => setSelectedCategory(category._id)}
-                className={`px-6 py-3 rounded-[6px] font-paragraph font-medium transition-all ${
-                  selectedCategory === category._id
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-surface border border-line text-foreground hover:border-primary'
-                }`}
-              >
-                {category.name}
-              </button>
-            ))}
+          {categories.map(category => (
+            <button
+              key={category._id}
+              onClick={() => setSelectedCategory(category._id)}
+              className={`px-6 py-3 rounded-[6px] font-paragraph font-medium transition-all ${
+                selectedCategory === category._id
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-surface border border-line text-foreground hover:border-primary'
+              }`}
+            >
+              {category.name}
+            </button>
+          ))}
         </div>
 
         {/* Products Grid */}
