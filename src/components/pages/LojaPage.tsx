@@ -53,16 +53,47 @@ export default function LojaPage() {
   useEffect(() => {
     const loadCategories = async () => {
       try {
-        const result = await categories.queryCategories({
-          query: {
-            filter: {
-              'treeReference.appNamespace': '@wix/stores',
-              'visible': true
-            }
-          }
-        });
+        // Log available methods in categories object
+        console.log('Available methods in categories:', Object.keys(categories));
 
-        console.log('Raw queryCategories result:', result);
+        // Try searchCategories method
+        let result;
+        if (typeof categories.searchCategories === 'function') {
+          console.log('Using searchCategories method...');
+          result = await categories.searchCategories({
+            query: {
+              filter: {
+                'treeReference.appNamespace': '@wix/stores',
+                'visible': true
+              }
+            }
+          });
+          console.log('Raw searchCategories result:', result);
+        } else if (typeof categories.listCategories === 'function') {
+          console.log('Using listCategories method...');
+          result = await categories.listCategories({
+            query: {
+              filter: {
+                'treeReference.appNamespace': '@wix/stores',
+                'visible': true
+              }
+            }
+          });
+          console.log('Raw listCategories result:', result);
+        } else if (typeof categories.getCategories === 'function') {
+          console.log('Using getCategories method...');
+          result = await categories.getCategories({
+            query: {
+              filter: {
+                'treeReference.appNamespace': '@wix/stores',
+                'visible': true
+              }
+            }
+          });
+          console.log('Raw getCategories result:', result);
+        } else {
+          throw new Error('No suitable method found to fetch categories. Available methods: ' + Object.keys(categories).join(', '));
+        }
 
         const allCategories = (result.items || [])
           .filter((cat: any) => {
