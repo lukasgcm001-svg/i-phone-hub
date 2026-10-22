@@ -53,11 +53,18 @@ export default function LojaPage() {
   useEffect(() => {
     const loadCategories = async () => {
       try {
-        // Log available methods in categories object
-        console.log('Available methods in categories:', Object.keys(categories));
+        // Step 1: Log typeof for each method to detect available functions
+        console.log('=== DETECTING AVAILABLE METHODS ===');
+        console.log('typeof categories.searchCategories:', typeof categories.searchCategories);
+        console.log('typeof categories.queryCategories:', typeof categories.queryCategories);
+        console.log('typeof categories.listCategories:', typeof categories.listCategories);
+        console.log('typeof categories.getCategory:', typeof categories.getCategory);
+        console.log('typeof categories.listItemsInCategory:', typeof categories.listItemsInCategory);
+        console.log('=== END METHOD DETECTION ===');
 
-        // Try searchCategories method
+        // Step 2: Try to fetch categories using available method
         let result;
+        
         if (typeof categories.searchCategories === 'function') {
           console.log('Using searchCategories method...');
           result = await categories.searchCategories({
@@ -69,6 +76,17 @@ export default function LojaPage() {
             }
           });
           console.log('Raw searchCategories result:', result);
+        } else if (typeof categories.queryCategories === 'function') {
+          console.log('Using queryCategories method...');
+          result = await categories.queryCategories({
+            query: {
+              filter: {
+                'treeReference.appNamespace': '@wix/stores',
+                'visible': true
+              }
+            }
+          });
+          console.log('Raw queryCategories result:', result);
         } else if (typeof categories.listCategories === 'function') {
           console.log('Using listCategories method...');
           result = await categories.listCategories({
@@ -80,21 +98,11 @@ export default function LojaPage() {
             }
           });
           console.log('Raw listCategories result:', result);
-        } else if (typeof categories.getCategories === 'function') {
-          console.log('Using getCategories method...');
-          result = await categories.getCategories({
-            query: {
-              filter: {
-                'treeReference.appNamespace': '@wix/stores',
-                'visible': true
-              }
-            }
-          });
-          console.log('Raw getCategories result:', result);
         } else {
-          throw new Error('No suitable method found to fetch categories. Available methods: ' + Object.keys(categories).join(', '));
+          throw new Error('No suitable method found to fetch categories. Available methods: searchCategories, queryCategories, listCategories');
         }
 
+        // Step 3: Filter and sort categories
         const allCategories = (result.items || [])
           .filter((cat: any) => {
             // Exclude root category and featured category
