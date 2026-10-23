@@ -1,11 +1,8 @@
 import { categories } from '@wix/categories';
-import { elevate } from '@wix/essentials';
 
 export async function getCategoriesFromWix() {
   try {
-    const elevatedCategories = elevate(categories);
-    
-    const result = await elevatedCategories.searchCategories({
+    const result = await categories.searchCategories({
       query: {
         filter: {
           'treeReference.appNamespace': '@wix/stores',
