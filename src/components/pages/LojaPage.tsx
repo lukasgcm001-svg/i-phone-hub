@@ -8,7 +8,8 @@ import WhatsAppButton from '@/components/WhatsAppButton';
 import { Image } from '@/components/ui/image';
 import { BaseCrudService } from '@/integrations';
 import { convertWixImageUrl, getMinProductPrice, convertAndFormatPrice } from '@/lib/wix-image-utils';
-import { categories } from '@wix/categories';
+import { categories as wixCategories } from '@wix/categories';
+import { getCategoriesFromWix } from '@/lib/get-categories';
 
 interface Product {
   _id: string;
@@ -32,95 +33,26 @@ interface Product {
   }>;
 }
 
-interface Category {
-  _id: string;
+interface CategoryItem {
+  id: string;
   name: string;
-  displayOrder?: number;
 }
-
-// Constants
-const FEATURED_CATEGORY_ID = 'a7f817f7-8ac1-43b2-91c3-9072a41ad0fa';
-const ROOT_CATEGORY_NAME = 'Todos os produtos';
 
 export default function LojaPage() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryList, setCategoryList] = useState<CategoryItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
 
-  // Load categories from Wix Categories API
+  // Load categories from backend web method
   useEffect(() => {
     const loadCategories = async () => {
       try {
-        // Step 1: Log typeof for each method to detect available functions
-        console.log('=== DETECTING AVAILABLE METHODS ===');
-        console.log('typeof categories.searchCategories:', typeof categories.searchCategories);
-        console.log('typeof categories.queryCategories:', typeof categories.queryCategories);
-        console.log('typeof categories.listCategories:', typeof categories.listCategories);
-        console.log('typeof categories.getCategory:', typeof categories.getCategory);
-        console.log('typeof categories.listItemsInCategory:', typeof categories.listItemsInCategory);
-        console.log('=== END METHOD DETECTION ===');
-
-        // Step 2: Try to fetch categories using available method
-        let result;
-        
-        if (typeof categories.searchCategories === 'function') {
-          console.log('Using searchCategories method...');
-          result = await categories.searchCategories({
-            query: {
-              filter: {
-                'treeReference.appNamespace': '@wix/stores',
-                'visible': true
-              }
-            }
-          });
-          console.log('Raw searchCategories result:', result);
-        } else if (typeof categories.queryCategories === 'function') {
-          console.log('Using queryCategories method...');
-          result = await categories.queryCategories({
-            query: {
-              filter: {
-                'treeReference.appNamespace': '@wix/stores',
-                'visible': true
-              }
-            }
-          });
-          console.log('Raw queryCategories result:', result);
-        } else if (typeof categories.listCategories === 'function') {
-          console.log('Using listCategories method...');
-          result = await categories.listCategories({
-            query: {
-              filter: {
-                'treeReference.appNamespace': '@wix/stores',
-                'visible': true
-              }
-            }
-          });
-          console.log('Raw listCategories result:', result);
-        } else {
-          throw new Error('No suitable method found to fetch categories. Available methods: searchCategories, queryCategories, listCategories');
-        }
-
-        // Step 3: Filter and sort categories
-        const allCategories = (result.items || [])
-          .filter((cat: any) => {
-            // Exclude root category and featured category
-            return cat.name !== ROOT_CATEGORY_NAME && cat._id !== FEATURED_CATEGORY_ID;
-          })
-          .sort((a: any, b: any) => {
-            // Sort by displayOrder if available, otherwise alphabetically
-            if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
-              return a.displayOrder - b.displayOrder;
-            }
-            return (a.name || '').localeCompare(b.name || '');
-          });
-
-        console.log('Filtered and sorted categories:', allCategories);
-        setCategories(allCategories);
+        const result = await getCategoriesFromWix();
+        setCategoryList(result);
       } catch (error) {
         console.error('Error loading categories:', error);
-        console.log('Full error object:', error);
       }
     };
 
@@ -154,7 +86,7 @@ export default function LojaPage() {
           setIsLoading(true);
           
           // Get items in the selected category
-          const categoryItems = await categories.listItemsInCategory(
+          const categoryItems = await wixCategories.listItemsInCategory(
             selectedCategory,
             { appNamespace: '@wix/stores' }
           );
@@ -236,12 +168,12 @@ export default function LojaPage() {
           >
             Todos
           </button>
-          {categories.map(category => (
+          {categoryList.map(category => (
             <button
-              key={category._id}
-              onClick={() => setSelectedCategory(category._id)}
+              key={category.id}
+              onClick={() => setSelectedCategory(category.id)}
               className={`px-6 py-3 rounded-[6px] font-paragraph font-medium transition-all ${
-                selectedCategory === category._id
+                selectedCategory === category.id
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-surface border border-line text-foreground hover:border-primary'
               }`}
