@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, MotionConfig } from 'framer-motion';
-import { X } from 'lucide-react';
+import { Check, ChevronDown, X } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
@@ -49,51 +50,62 @@ const isFilterCategory = (cat: CategoryItem) => slugify(cat.name) !== 'destaques
 const isModel = (cat: CategoryItem) => /iphone\s*\d+/i.test(cat.name);
 const modelNumber = (cat: CategoryItem) => parseInt(cat.name.match(/\d+/)?.[0] || '0', 10);
 
-function FilterGroup({
+// Botão que abre um menu com as opções da categoria. O valor escolhido aparece no próprio botão.
+function FilterDropdown({
   label,
   options,
-  selectedId,
+  selected,
   onSelect,
 }: {
   label: string;
   options: CategoryItem[];
-  selectedId?: string;
+  selected?: CategoryItem;
   onSelect: (category: CategoryItem | null) => void;
 }) {
-  const chip =
-    'snap-start shrink-0 inline-flex items-center justify-center min-h-[2.75rem] px-5 rounded-full border font-paragraph text-sm font-medium touch-manipulation transition-[transform,background-color,color] duration-100 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary';
-  const inactive = 'border-[rgba(255,255,255,0.12)] text-foreground';
-  const active = 'bg-primary border-primary text-primary-foreground';
+  const item =
+    'min-h-[2.75rem] px-3 rounded-[8px] text-sm font-paragraph cursor-pointer justify-between data-[highlighted]:bg-foreground/10';
 
   return (
-    <div role="group" aria-label={label}>
-      <p className="block text-xs uppercase tracking-wider text-secondary mb-2 font-paragraph">{label}</p>
-      {/* p-1 -m-1: deixa o contorno de foco de 2px aparecer dentro da área rolável */}
-      <div className="flex gap-2 p-1 -m-1 overflow-x-auto snap-x snap-mandatory scroll-px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex-wrap md:overflow-visible md:snap-none">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-pressed={!selectedId}
-          onClick={() => onSelect(null)}
-          className={`${chip} ${selectedId ? inactive : active}`}
+          className={`group flex w-full md:w-60 items-center justify-between gap-3 min-h-[3.5rem] px-4 md:px-5 py-2 rounded-full border text-left font-paragraph touch-manipulation transition-[transform,border-color] duration-100 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 hover:border-primary data-[state=open]:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+            selected ? 'border-primary' : 'border-[rgba(255,255,255,0.12)]'
+          }`}
         >
-          Todos
+          <span className="flex flex-col leading-tight">
+            <span className="text-xs uppercase tracking-wider text-secondary">{label}</span>
+            <span className={`text-sm font-medium ${selected ? 'text-primary' : 'text-foreground'}`}>
+              {selected?.name ?? 'Todos'}
+            </span>
+          </span>
+          <ChevronDown className="w-4 h-4 shrink-0 text-secondary transition-transform duration-200 group-data-[state=open]:rotate-180 motion-reduce:transition-none" />
         </button>
-        {options.map((category) => {
-          const pressed = category.id === selectedId;
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        className="min-w-[var(--radix-dropdown-menu-trigger-width)] p-1.5 rounded-[12px] border-line bg-surface"
+      >
+        {[null, ...options].map((category) => {
+          const checked = (category?.id ?? '') === (selected?.id ?? '');
           return (
-            <button
-              key={category.id}
-              type="button"
-              aria-pressed={pressed}
-              onClick={() => onSelect(pressed ? null : category)}
-              className={`${chip} ${pressed ? active : inactive}`}
+            <DropdownMenuItem
+              key={category?.id ?? 'todos'}
+              role="menuitemradio"
+              aria-checked={checked}
+              onSelect={() => onSelect(category)}
+              className={item}
             >
-              {category.name}
-            </button>
+              <span className={checked ? 'text-primary font-medium' : 'text-foreground'}>
+                {category?.name ?? 'Todos'}
+              </span>
+              {checked && <Check className="w-4 h-4 text-primary" />}
+            </DropdownMenuItem>
           );
         })}
-      </div>
-    </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -230,19 +242,19 @@ export default function LojaPage() {
           </div>
         )}
 
-        {/* Filters - chips */}
+        {/* Filters - dois botões com menu */}
         <div className="mb-12">
-          <div className="flex flex-col gap-6 mb-6">
-            <FilterGroup
+          <div className="grid grid-cols-2 gap-3 md:flex md:gap-4 mb-6">
+            <FilterDropdown
               label="Condição"
               options={conditionCategories}
-              selectedId={condition?.id}
+              selected={condition}
               onSelect={(cat) => setFilter('condicao', cat)}
             />
-            <FilterGroup
+            <FilterDropdown
               label="Modelo"
               options={modelCategories}
-              selectedId={model?.id}
+              selected={model}
               onSelect={(cat) => setFilter('modelo', cat)}
             />
           </div>
