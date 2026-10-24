@@ -11,7 +11,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="md:col-span-4">
             <h3 className="text-2xl font-heading font-bold text-foreground mb-4">
-              Lukas apple
+              Kiko cell
             </h3>
             <p className="text-secondary font-paragraph leading-relaxed mb-6">
               iPhones originais com garantia, procedência certificada e atendimento humano.
@@ -92,7 +92,7 @@ export default function Footer() {
         {/* Bottom */}
         <div className="border-t border-line mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-secondary text-sm font-paragraph">
-            © {new Date().getFullYear()} Lukas apple. Todos os direitos reservados.
+            © {new Date().getFullYear()} Kiko cell. Todos os direitos reservados.
           </p>
           <div className="flex gap-6">
             <Link to="/garantia" className="text-secondary hover:text-primary text-sm font-paragraph transition-colors">
