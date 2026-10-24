@@ -5,7 +5,7 @@ import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
 
 export default function ContatoPage() {
-  const whatsappNumber = '[NÚMERO DO WHATSAPP]';
+  const whatsappNumber = '5535999999999';
   const whatsappMessage = encodeURIComponent('Olá, vim pelo site e quero saber sobre um iPhone.');
 
   return (
