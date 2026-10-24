@@ -44,6 +44,8 @@ interface CategoryItem {
 const slugify = (name: string) =>
   name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
+// Destaques é só da Home; All Products é a categoria raiz do Wix Stores.
+const isFilterCategory = (cat: CategoryItem) => slugify(cat.name) !== 'destaques' && cat.name !== 'All Products';
 const isModel = (cat: CategoryItem) => /iphone\s*\d+/i.test(cat.name);
 const modelNumber = (cat: CategoryItem) => parseInt(cat.name.match(/\d+/)?.[0] || '0', 10);
 
@@ -107,7 +109,7 @@ export default function LojaPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const list: CategoryItem[] = await getCategoriesFromWix();
+        const list: CategoryItem[] = (await getCategoriesFromWix()).filter(isFilterCategory);
         setCategoryList(list);
 
         const entries = await Promise.all(
@@ -145,16 +147,13 @@ export default function LojaPage() {
 
   const isLoading = products === null || idsByCategory === null;
 
-  // Modelos: categorias "iPhone N", do mais novo ao mais antigo. Condição: as demais, exceto Destaques (só da Home).
+  // Modelos: categorias "iPhone N", do mais novo ao mais antigo. Condição: as demais.
   const modelCategories = useMemo(
     () => categoryList.filter(isModel).sort((a, b) => modelNumber(b) - modelNumber(a)),
     [categoryList]
   );
   const conditionCategories = useMemo(
-    () =>
-      categoryList
-        .filter((cat) => !isModel(cat) && slugify(cat.name) !== 'destaques' && cat.name !== 'All Products')
-        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+    () => categoryList.filter((cat) => !isModel(cat)).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
     [categoryList]
   );
 
