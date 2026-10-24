@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
@@ -36,14 +36,17 @@ interface Product {
 interface CategoryItem {
   id: string;
   name: string;
+  itemCounter?: number;
 }
 
 export default function LojaPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categoryList, setCategoryList] = useState<CategoryItem[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCondition, setSelectedCondition] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   // Load categories from backend web method
   useEffect(() => {
@@ -53,6 +56,7 @@ export default function LojaPage() {
         setCategoryList(result);
       } catch (error) {
         console.error('Error loading categories:', error);
+        setError('Erro ao carregar categorias');
       }
     };
 
@@ -70,6 +74,7 @@ export default function LojaPage() {
         setFilteredProducts(allProducts);
       } catch (error) {
         console.error('Error loading products:', error);
+        setError('Erro ao carregar produtos');
       } finally {
         setIsLoading(false);
       }
@@ -78,47 +83,85 @@ export default function LojaPage() {
     loadProducts();
   }, []);
 
-  // Filter products by selected category
+  // Separate categories into condition and model
+  const conditionCategories = categoryList.filter(cat => 
+    (cat.name === 'Novos' || cat.name === 'Seminovos') && (cat.itemCounter || 0) > 0
+  );
+
+  const modelCategories = categoryList.filter(cat => 
+    cat.name !== 'All Products' && 
+    cat.name !== 'Destaques' && 
+    cat.name !== 'Novos' && 
+    cat.name !== 'Seminovos' &&
+    (cat.itemCounter || 0) > 0
+  ).sort((a, b) => {
+    // Extract numbers from iPhone names and sort descending (newest first)
+    const numA = parseInt(a.name.match(/\d+/)?.[0] || '0');
+    const numB = parseInt(b.name.match(/\d+/)?.[0] || '0');
+    return numB - numA;
+  });
+
+  // Filter products based on selected condition and model
   useEffect(() => {
-    if (selectedCategory) {
-      const filterProductsByCategory = async () => {
-        try {
-          setIsLoading(true);
-          
-          // Get items in the selected category
-          const categoryItems = await wixCategories.listItemsInCategory(
-            selectedCategory,
-            { appNamespace: '@wix/stores' }
-          );
+    const filterProducts = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
 
-          console.log(`Raw listItemsInCategory result for category ${selectedCategory}:`, categoryItems);
+        let conditionItemIds: string[] = [];
+        let modelItemIds: string[] = [];
 
-          // Extract catalogItemIds
-          const categoryItemIds = (categoryItems.items || []).map((item: any) => item.catalogItemId);
-
-          if (categoryItemIds.length === 0) {
-            setFilteredProducts([]);
-            return;
+        // Get items for selected condition
+        if (selectedCondition) {
+          const conditionCategory = categoryList.find(cat => cat.name === selectedCondition);
+          if (conditionCategory) {
+            const categoryItems = await wixCategories.listItemsInCategory(
+              conditionCategory.id,
+              { appNamespace: '@wix/stores' }
+            );
+            conditionItemIds = (categoryItems.items || []).map((item: any) => item.catalogItemId);
           }
-
-          // Filter products by the category item IDs
-          const filtered = products.filter(product => categoryItemIds.includes(product._id));
-          setFilteredProducts(filtered);
-        } catch (error) {
-          console.error(`Error filtering products for category ${selectedCategory}:`, error);
-          console.log('Full error object:', error);
-          setFilteredProducts([]);
-        } finally {
-          setIsLoading(false);
         }
-      };
 
-      filterProductsByCategory();
-    } else {
-      setFilteredProducts(products);
-      setIsLoading(false);
-    }
-  }, [selectedCategory, products]);
+        // Get items for selected model
+        if (selectedModel) {
+          const modelCategory = categoryList.find(cat => cat.name === selectedModel);
+          if (modelCategory) {
+            const categoryItems = await wixCategories.listItemsInCategory(
+              modelCategory.id,
+              { appNamespace: '@wix/stores' }
+            );
+            modelItemIds = (categoryItems.items || []).map((item: any) => item.catalogItemId);
+          }
+        }
+
+        // Apply filters
+        let filtered = products;
+
+        if (selectedCondition && selectedModel) {
+          // Both selected: intersection
+          const intersection = conditionItemIds.filter(id => modelItemIds.includes(id));
+          filtered = products.filter(product => intersection.includes(product._id));
+        } else if (selectedCondition) {
+          // Only condition selected
+          filtered = products.filter(product => conditionItemIds.includes(product._id));
+        } else if (selectedModel) {
+          // Only model selected
+          filtered = products.filter(product => modelItemIds.includes(product._id));
+        }
+
+        setFilteredProducts(filtered);
+      } catch (error) {
+        console.error('Error filtering products:', error);
+        setError('Erro ao filtrar produtos');
+        setFilteredProducts([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    filterProducts();
+  }, [selectedCondition, selectedModel, products, categoryList]);
 
   const getProductImage = (product: Product): string | undefined => {
     // Use media.main.image from Wix Stores
@@ -136,6 +179,13 @@ export default function LojaPage() {
       style: 'currency',
       currency: 'BRL'
     }).format(price);
+  };
+
+  const hasActiveFilters = selectedCondition !== null || selectedModel !== null;
+
+  const handleClearFilters = () => {
+    setSelectedCondition(null);
+    setSelectedModel(null);
   };
 
   return (
@@ -156,31 +206,71 @@ export default function LojaPage() {
           </p>
         </div>
 
-        {/* Filters */}
-        <div className="mb-12 flex flex-wrap gap-3">
-          <button
-            onClick={() => setSelectedCategory(null)}
-            className={`px-6 py-3 rounded-[6px] font-paragraph font-medium transition-all ${
-              selectedCategory === null
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-surface border border-line text-foreground hover:border-primary'
-            }`}
-          >
-            Todos
-          </button>
-          {categoryList.map(category => (
+        {/* Error Message */}
+        {error && (
+          <div className="mb-8 p-4 bg-destructive/10 border border-destructive rounded-[6px]">
+            <p className="text-destructive font-paragraph text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* Filters - Two Dropdowns */}
+        <div className="mb-12">
+          <div className="flex flex-col md:flex-row gap-4 md:gap-6 mb-6">
+            {/* Condition Dropdown */}
+            <div className="flex-1">
+              <label className="block text-xs uppercase tracking-wider text-secondary mb-2 font-paragraph">
+                Condição
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedCondition || ''}
+                  onChange={(e) => setSelectedCondition(e.target.value || null)}
+                  className="w-full appearance-none bg-surface border border-line text-foreground px-4 py-3 rounded-[6px] font-paragraph text-sm transition-all focus:outline-none focus:border-primary hover:border-primary cursor-pointer"
+                >
+                  <option value="">Todos</option>
+                  {conditionCategories.map(category => (
+                    <option key={category.id} value={category.name}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Model Dropdown */}
+            <div className="flex-1">
+              <label className="block text-xs uppercase tracking-wider text-secondary mb-2 font-paragraph">
+                Modelo
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedModel || ''}
+                  onChange={(e) => setSelectedModel(e.target.value || null)}
+                  className="w-full appearance-none bg-surface border border-line text-foreground px-4 py-3 rounded-[6px] font-paragraph text-sm transition-all focus:outline-none focus:border-primary hover:border-primary cursor-pointer"
+                >
+                  <option value="">Todos</option>
+                  {modelCategories.map(category => (
+                    <option key={category.id} value={category.name}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
             <button
-              key={category.id}
-              onClick={() => setSelectedCategory(category.id)}
-              className={`px-6 py-3 rounded-[6px] font-paragraph font-medium transition-all ${
-                selectedCategory === category.id
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-surface border border-line text-foreground hover:border-primary'
-              }`}
+              onClick={handleClearFilters}
+              className="text-xs text-secondary hover:text-primary transition-colors font-paragraph flex items-center gap-1"
             >
-              {category.name}
+              <X className="w-3 h-3" />
+              Limpar filtros
             </button>
-          ))}
+          )}
         </div>
 
         {/* Products Grid */}
@@ -244,7 +334,7 @@ export default function LojaPage() {
         ) : (
           <div className="text-center py-16">
             <p className="text-secondary font-paragraph text-lg">
-              Nenhum produto encontrado nesta categoria.
+              Nenhum produto encontrado com esses filtros.
             </p>
           </div>
         )}
