@@ -23,7 +23,7 @@ export default function Header() {
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <Link to="/" className="text-2xl font-heading font-bold text-foreground hover:text-primary transition-colors">
-            Apple phones
+            Lukas apple
           </Link>
 
           {/* Desktop Navigation */}
