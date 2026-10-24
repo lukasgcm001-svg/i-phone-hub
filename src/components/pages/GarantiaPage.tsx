@@ -164,7 +164,7 @@ export default function GarantiaPage() {
               Nossa equipe está pronta para esclarecer qualquer questão sobre garantia e procedência.
             </p>
             <a
-              href={`https://wa.me/5535999999999?text=${encodeURIComponent('Olá, vim pelo site e quero saber sobre um iPhone.')}`}
+              href={`https://wa.me/5531973418394?text=${encodeURIComponent('Olá, vim pelo site e quero saber sobre um iPhone.')}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center bg-primary text-primary-foreground px-8 py-4 rounded-md font-semibold font-paragraph transition-all duration-300 hover:opacity-90"

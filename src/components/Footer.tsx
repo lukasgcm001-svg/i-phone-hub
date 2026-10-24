@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Instagram, Facebook, Mail } from 'lucide-react';
 
 export default function Footer() {
-  const whatsappNumber = '5535999999999';
+  const whatsappNumber = '5531973418394';
 
   return (
     <footer className="w-full bg-surface border-t border-line">

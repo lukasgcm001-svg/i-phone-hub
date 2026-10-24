@@ -5,7 +5,7 @@ import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
 
 export default function ComoComprarPage() {
-  const whatsappNumber = '5535999999999';
+  const whatsappNumber = '5531973418394';
   const whatsappMessage = encodeURIComponent('Olá, vim pelo site e quero saber sobre um iPhone.');
 
   const steps = [

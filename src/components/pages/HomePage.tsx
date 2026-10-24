@@ -52,7 +52,7 @@ interface Product {
 
 export default function HomePage() {
   // --- Canonical Data Sources ---
-  const whatsappNumber = '5535999999999';
+  const whatsappNumber = '5531973418394';
   const whatsappMessage = encodeURIComponent('Olá, vim pelo site e quero saber sobre um iPhone.');
 
   const faqs: FAQ[] = [
