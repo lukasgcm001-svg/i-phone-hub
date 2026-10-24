@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function Header() {
+export default function Header({ glass = false }: { glass?: boolean }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -18,7 +18,12 @@ export default function Header() {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-line">
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 ${
+        glass ? 'glass-header' : 'bg-background/95 backdrop-blur-sm border-b border-line'
+      }`}
+    >
+      {glass && <div className="glass-header-fade" aria-hidden="true" />}
       <div className="max-w-[120rem] mx-auto px-6 md:px-12">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}

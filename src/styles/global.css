@@ -3,3 +3,35 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Cabeçalho translúcido (usado só na Home). */
+.glass-header {
+  background: rgba(7, 8, 11, 0.6);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Faixa de desfoque gradual logo abaixo do cabeçalho: o conteúdo some suavemente ao rolar. */
+.glass-header-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 1.5rem;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent);
+  mask-image: linear-gradient(to bottom, #000, transparent);
+}
+
+/* Sem suporte a blur, ou com "reduzir transparência" ativo: superfície opaca. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-header { background: #07080b; }
+  .glass-header-fade { display: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass-header { background: #07080b; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .glass-header-fade { display: none; }
+}

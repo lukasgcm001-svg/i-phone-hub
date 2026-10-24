@@ -13,6 +13,18 @@ import { categories } from '@wix/categories';
 // --- Constants ---
 const FEATURED_CATEGORY_ID = 'a7f817f7-8ac1-43b2-91c3-9072a41ad0fa';
 
+// Pede ao Wix a imagem já em WebP, redimensionada para caber em w×h (sem corte nem esticar).
+// URLs que não são do Wix passam direto.
+const wixWebp = (url: string | undefined, w: number, h: number): string | undefined => {
+  const match = url?.match(/^(https:\/\/static\.wixstatic\.com\/media\/[^/?#]+)/);
+  if (!match) return url;
+  return `${match[1]}/v1/fit/w_${w},h_${h},al_c,q_85/imagem.webp`;
+};
+
+// Foto do hero. Troque por uma foto nítida (mín. 1200px de altura) quando houver.
+const HERO_IMAGE =
+  'https://static.wixstatic.com/media/199aa8_39f7dc9ef36c4704887efeadde415efb~mv2.png';
+
 // --- Types ---
 interface FAQ {
   question: string;
@@ -114,8 +126,28 @@ export default function HomePage() {
   const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
+    <div ref={containerRef} className="home-root min-h-screen bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
       <style>{`
+        .home-root p:not(.eyebrow) {
+          line-height: 1.55;
+          letter-spacing: 0.005em;
+        }
+        .home-root .eyebrow {
+          font-size: 0.75rem;
+          line-height: 1rem;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+        }
+        .home-root .hero-title {
+          font-size: clamp(2.75rem, 8vw, 6.5rem);
+          line-height: 1.02;
+          letter-spacing: -0.03em;
+          font-weight: 700;
+        }
+        .home-root .section-title {
+          line-height: 1.1;
+          letter-spacing: -0.02em;
+        }
         .tech-grid {
           background-image: 
             linear-gradient(to right, rgba(35, 40, 50, 0.3) 1px, transparent 1px),
@@ -132,7 +164,7 @@ export default function HomePage() {
         }
       `}</style>
 
-      <Header />
+      <Header glass />
       <WhatsAppButton />
 
       {/* Global Scroll Progress */}
@@ -142,7 +174,7 @@ export default function HomePage() {
       />
 
       {/* --- HERO SECTION --- */}
-      <section className="relative min-h-[95vh] flex items-center pt-32 pb-20 overflow-clip border-b border-line">
+      <section className="relative min-h-[100svh] flex items-center pt-28 pb-10 md:pb-16 overflow-clip border-b border-line">
         {/* Architectural Background Elements */}
         <div className="absolute inset-0 tech-grid pointer-events-none opacity-50" />
         <div className="absolute left-6 md:left-12 top-0 bottom-0 w-px bg-line pointer-events-none" />
@@ -157,27 +189,27 @@ export default function HomePage() {
               style={{ y: heroTextY, opacity: heroOpacity }}
               className="col-span-12 lg:col-span-7 flex flex-col"
             >
-              <div className="flex items-center gap-4 mb-8">
+              <div className="flex items-center gap-4 mb-5 md:mb-8">
                 <span className="w-8 h-px bg-primary"></span>
-                <p className="text-xs uppercase tracking-[0.2em] text-primary font-paragraph font-medium">
+                <p className="eyebrow text-primary font-paragraph font-medium">
                   Tecnologia Premium
                 </p>
               </div>
-              
-              <h1 className="text-5xl md:text-7xl lg:text-[6.5rem] font-heading font-bold text-foreground mb-8 leading-[1.05] tracking-tight">
+
+              <h1 className="hero-title font-heading text-foreground mb-5 md:mb-8">
                 iPhone Original
                 <br />
                 <span className="text-gradient">Direto pra Você.</span>
               </h1>
-              
-              <p className="text-lg md:text-xl text-secondary max-w-2xl mb-12 font-paragraph leading-relaxed border-l border-line pl-6">
+
+              <p className="text-base md:text-xl text-secondary max-w-2xl mb-7 md:mb-12 font-paragraph border-l border-line pl-6">
                 Novos e seminovos com garantia, procedência certificada e atendimento humano. A experiência Apple sem complicação.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 items-start">
                 <Link
                   to="/loja"
-                  className="group relative inline-flex items-center justify-center bg-primary text-primary-foreground px-8 py-4 rounded-[6px] font-semibold font-paragraph overflow-hidden transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                  className="group relative inline-flex items-center justify-center min-h-[3rem] bg-primary text-primary-foreground px-8 py-3 rounded-[6px] font-semibold font-paragraph overflow-hidden touch-manipulation transition-transform duration-100 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100"
                 >
                   <span className="relative z-10 flex items-center gap-2">
                     Ver Catálogo <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -189,7 +221,7 @@ export default function HomePage() {
                   href={`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group inline-flex items-center justify-center bg-transparent text-foreground border border-line px-8 py-4 rounded-[6px] font-semibold font-paragraph transition-all duration-300 hover:border-primary hover:text-primary"
+                  className="group inline-flex items-center justify-center min-h-[3rem] bg-transparent text-foreground border border-line px-8 py-3 rounded-[6px] font-semibold font-paragraph touch-manipulation transition-[transform,colors] duration-100 hover:border-primary hover:text-primary active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100"
                 >
                   <span className="flex items-center gap-2">
                     Falar no WhatsApp
@@ -199,26 +231,29 @@ export default function HomePage() {
             </motion.div>
 
             {/* Hero Image / Visual Anchor */}
-            <div className="col-span-12 lg:col-span-5 relative h-[50vh] lg:h-[75vh] mt-12 lg:mt-0">
-              <motion.div 
+            <div className="col-span-12 lg:col-span-5 relative h-[38svh] lg:h-[70svh] mt-2 lg:mt-0">
+              <motion.div
                 style={{ y: heroImageY }}
-                className="absolute inset-0 w-full h-full clip-diagonal bg-surface border border-line p-2"
+                className="absolute inset-0 w-full h-full"
               >
-                <div className="relative w-full h-full rounded-[4px] overflow-hidden bg-background">
-                  <Image 
-                    src="https://static.wixstatic.com/media/199aa8_39f7dc9ef36c4704887efeadde415efb~mv2.png?originWidth=896&originHeight=640" 
-                    alt="iPhone Premium Showcase"
-                    className="w-full h-full object-cover opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all duration-700"
-                  />
-                  {/* Overlay UI Elements */}
-                  <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
-                    <div className="bg-surface/80 backdrop-blur-md border border-line p-4 rounded-[6px]">
-                      <p className="text-xs uppercase tracking-wider text-secondary font-paragraph mb-1">Status</p>
-                      <p className="text-sm font-heading font-semibold text-primary flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-                        Estoque Atualizado
-                      </p>
-                    </div>
+                {/* Sombra suave sob o aparelho */}
+                <div className="absolute bottom-[4%] left-1/2 -translate-x-1/2 w-3/5 h-6 rounded-full bg-black/70 blur-2xl pointer-events-none" aria-hidden="true" />
+                <img
+                  src={wixWebp(HERO_IMAGE, 896, 640)}
+                  alt="iPhone Premium Showcase"
+                  width={896}
+                  height={640}
+                  decoding="async"
+                  className="relative w-full h-full object-contain"
+                />
+                {/* Selo de status */}
+                <div className="absolute bottom-0 left-0">
+                  <div className="bg-surface/90 border border-line p-3 md:p-4 rounded-[6px]">
+                    <p className="eyebrow text-secondary font-paragraph mb-1">Status</p>
+                    <p className="text-sm font-heading font-semibold text-primary flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-primary motion-safe:animate-pulse"></span>
+                      Estoque Atualizado
+                    </p>
                   </div>
                 </div>
               </motion.div>
@@ -229,7 +264,7 @@ export default function HomePage() {
       </section>
 
       {/* --- COMO COMPRAR (Sticky Narrative) --- */}
-      <section className="relative w-full bg-background py-32 border-b border-line">
+      <section className="relative w-full bg-background py-16 md:py-24 border-b border-line">
         <div className="max-w-[120rem] mx-auto px-6 md:px-12">
           <div className="grid grid-cols-12 gap-12 lg:gap-24">
             
@@ -238,11 +273,11 @@ export default function HomePage() {
               <div className="sticky top-32">
                 <div className="flex items-center gap-4 mb-6">
                   <span className="w-8 h-px bg-primary"></span>
-                  <p className="text-xs uppercase tracking-[0.2em] text-secondary font-paragraph">
+                  <p className="eyebrow text-secondary font-paragraph">
                     Processo Simples
                   </p>
                 </div>
-                <h2 className="text-4xl md:text-6xl font-heading font-bold text-foreground mb-6 leading-tight">
+                <h2 className="text-4xl md:text-6xl font-heading font-bold text-foreground mb-4 section-title">
                   Jornada de <br/><span className="text-secondary">Aquisição.</span>
                 </h2>
                 <p className="text-lg text-secondary font-paragraph max-w-md">
@@ -256,7 +291,7 @@ export default function HomePage() {
               {/* Vertical connecting line */}
               <div className="absolute left-[2.25rem] top-8 bottom-8 w-px bg-line hidden md:block" />
               
-              <div className="space-y-16 md:space-y-24">
+              <div className="space-y-10 md:space-y-14">
                 {steps.map((step, index) => (
                   <motion.div
                     key={step.num}
@@ -292,19 +327,19 @@ export default function HomePage() {
       </section>
 
       {/* --- DESTAQUES (Products from Wix Stores) --- */}
-      <section className="relative w-full bg-surface py-32 border-b border-line overflow-hidden">
+      <section className="relative w-full bg-surface py-24 md:py-40 border-b border-line overflow-hidden">
         <div className="absolute inset-0 tech-grid opacity-30 pointer-events-none" />
         
         <div className="max-w-[120rem] mx-auto px-6 md:px-12 relative z-10">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 md:mb-20 gap-6">
             <div>
               <div className="flex items-center gap-4 mb-4">
                 <span className="w-8 h-px bg-primary"></span>
-                <p className="text-xs uppercase tracking-[0.2em] text-secondary font-paragraph">
+                <p className="eyebrow text-secondary font-paragraph">
                   Catálogo
                 </p>
               </div>
-              <h2 className="text-4xl md:text-5xl font-heading font-bold text-foreground">
+              <h2 className="text-4xl md:text-5xl font-heading font-bold text-foreground section-title">
                 Destaques da Loja
               </h2>
             </div>
@@ -319,16 +354,16 @@ export default function HomePage() {
       </section>
 
       {/* --- DIFERENCIAIS (Asymmetrical Grid) --- */}
-      <section className="relative w-full bg-background py-32 border-b border-line">
+      <section className="relative w-full bg-background py-20 md:py-32 border-b border-line">
         <div className="max-w-[120rem] mx-auto px-6 md:px-12">
           <div className="mb-16">
             <div className="flex items-center gap-4 mb-4">
               <span className="w-8 h-px bg-primary"></span>
-              <p className="text-xs uppercase tracking-[0.2em] text-secondary font-paragraph">
+              <p className="eyebrow text-secondary font-paragraph">
                 Por Que Escolher
               </p>
             </div>
-            <h2 className="text-4xl md:text-5xl font-heading font-bold text-foreground">
+            <h2 className="text-4xl md:text-5xl font-heading font-bold text-foreground section-title">
               Nossos Diferenciais
             </h2>
           </div>
@@ -387,7 +422,7 @@ export default function HomePage() {
       </section>
 
       {/* --- FAQ (Minimalist Accordion) --- */}
-      <section className="relative w-full bg-surface py-32 border-b border-line">
+      <section className="relative w-full bg-surface py-14 md:py-24 border-b border-line">
         <div className="max-w-[120rem] mx-auto px-6 md:px-12">
           <div className="grid grid-cols-12 gap-12 lg:gap-24">
             
@@ -395,11 +430,11 @@ export default function HomePage() {
               <div className="sticky top-32">
                 <div className="flex items-center gap-4 mb-4">
                   <span className="w-8 h-px bg-primary"></span>
-                  <p className="text-xs uppercase tracking-[0.2em] text-secondary font-paragraph">
+                  <p className="eyebrow text-secondary font-paragraph">
                     Base de Conhecimento
                   </p>
                 </div>
-                <h2 className="text-4xl md:text-5xl font-heading font-bold text-foreground mb-6">
+                <h2 className="text-4xl md:text-5xl font-heading font-bold text-foreground mb-4 section-title">
                   Perguntas e Respostas
                 </h2>
                 <p className="text-secondary font-paragraph">
@@ -442,13 +477,13 @@ export default function HomePage() {
           >
             <div className="inline-flex items-center gap-4 mb-8">
               <span className="w-12 h-px bg-primary"></span>
-              <p className="text-xs uppercase tracking-[0.2em] text-primary font-paragraph font-medium">
+              <p className="eyebrow text-primary font-paragraph font-medium">
                 Pronto para Começar?
               </p>
               <span className="w-12 h-px bg-primary"></span>
             </div>
             
-            <h2 className="text-5xl md:text-7xl font-heading font-bold text-foreground mb-8 leading-tight">
+            <h2 className="text-5xl md:text-7xl font-heading font-bold text-foreground mb-8 section-title">
               Encontre Seu <br/>iPhone Ideal.
             </h2>
             
@@ -460,7 +495,7 @@ export default function HomePage() {
               href={`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="group relative inline-flex items-center justify-center bg-primary text-primary-foreground px-10 py-5 rounded-[6px] font-bold font-paragraph text-lg overflow-hidden transition-transform hover:scale-[1.02] active:scale-[0.98]"
+              className="group relative inline-flex items-center justify-center min-h-[3rem] bg-primary text-primary-foreground px-10 py-4 rounded-[6px] font-bold font-paragraph text-lg overflow-hidden touch-manipulation transition-transform duration-100 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
               <span className="relative z-10 flex items-center gap-3">
                 Falar com Especialista <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -489,7 +524,7 @@ function FAQItem({ faq, index }: { faq: FAQ; index: number }) {
     >
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between py-8 text-left group focus:outline-none"
+        className="w-full flex items-center justify-between py-5 md:py-6 text-left group focus:outline-none"
       >
         <span className="text-xl font-heading font-semibold text-foreground group-hover:text-primary transition-colors pr-8">
           {faq.question}
@@ -508,7 +543,7 @@ function FAQItem({ faq, index }: { faq: FAQ; index: number }) {
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="pb-8 pr-12 text-secondary font-paragraph text-lg leading-relaxed">
+            <div className="pb-5 md:pb-6 pr-12 text-secondary font-paragraph text-lg leading-relaxed">
               {faq.answer}
             </div>
           </motion.div>
@@ -586,7 +621,7 @@ function FeaturedProducts() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[...Array(4)].map((_, i) => (
           <div key={i} className="bg-background border border-line rounded-[6px] p-6 animate-pulse">
-            <div className="w-full h-48 bg-line rounded-[4px] mb-4" />
+            <div className="w-full aspect-[4/5] bg-line rounded-[4px] mb-4" />
             <div className="h-6 bg-line rounded mb-2" />
             <div className="h-4 bg-line rounded w-1/2" />
           </div>
@@ -607,12 +642,20 @@ function FeaturedProducts() {
           className="group bg-background border border-line rounded-[6px] overflow-hidden hover:border-primary transition-all duration-300"
         >
           {/* Product Image */}
-          <div className="relative w-full h-48 bg-surface overflow-hidden">
+          <div className="relative w-full aspect-[4/5] bg-background overflow-hidden">
             {getProductImage(product) ? (
-              <Image
-                src={getProductImage(product)!}
+              <img
+                src={wixWebp(getProductImage(product), 800, 1000)}
+                srcSet={[480, 800, 1200]
+                  .map((w) => `${wixWebp(getProductImage(product), w, Math.round(w * 1.25))} ${w}w`)
+                  .join(', ')}
+                sizes="(min-width: 1024px) 25vw, (min-width: 768px) 50vw, 100vw"
                 alt={product.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                width={800}
+                height={1000}
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-contain motion-safe:group-hover:scale-105 transition-transform duration-300"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-line/20">
