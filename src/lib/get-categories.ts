@@ -2,14 +2,10 @@ import { categories } from '@wix/categories';
 
 export async function getCategoriesFromWix() {
   try {
-    const result = await categories.searchCategories({
-      query: {
-        filter: {
-          'treeReference.appNamespace': '@wix/stores',
-          'visible': true
-        }
-      }
-    });
+   const result = await categories.searchCategories(
+  { filter: { visible: true } },
+  { treeReference: { appNamespace: '@wix/stores' } }
+);
 
     console.log('Raw getCategoriesFromWix result:', result);
 
