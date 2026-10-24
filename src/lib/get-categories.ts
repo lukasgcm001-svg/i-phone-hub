@@ -10,10 +10,10 @@ export async function getCategoriesFromWix() {
     console.log('Raw getCategoriesFromWix result:', result);
 
     // Filter out "Todos os produtos" and "Destaques"
-    const filtered = (result.items || [])
+       const filtered = (result.categories || result.items || [])
       .filter((cat: any) => cat.name !== 'Todos os produtos' && cat.name !== 'Destaques')
       .map((cat: any) => ({
-        id: cat._id,
+           id: cat._id ?? cat.id,
         name: cat.name
       }));
 
